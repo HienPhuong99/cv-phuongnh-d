@@ -159,6 +159,21 @@
         }
       });
     });
+
+    // 5. Tự động tắt thông báo sau 3.5 giây với hiệu ứng mượt
+    document.querySelectorAll('.alert.alert-dismissible').forEach(alertEl => {
+      setTimeout(() => {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Alert) {
+          const bsAlert = bootstrap.Alert.getOrCreateInstance(alertEl);
+          bsAlert.close();
+        } else {
+          alertEl.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+          alertEl.style.opacity = '0';
+          alertEl.style.transform = 'translateY(-10px)';
+          setTimeout(() => alertEl.remove(), 400);
+        }
+      }, 3500);
+    });
   </script>
 </body>
 </html>

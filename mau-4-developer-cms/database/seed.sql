@@ -4,6 +4,9 @@
 -- Tài khoản quản trị mặc định: admin / Admin@123
 -- ==============================================================================
 
+CREATE DATABASE IF NOT EXISTS `cv_mau4_developer` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `cv_mau4_developer`;
+
 SET NAMES utf8mb4;
 
 -- 1. Tài khoản Admin mặc định
