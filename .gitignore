@@ -1,0 +1,43 @@
+# File cấu hình nhạy cảm chứa mật khẩu DB & Secret Key
+config/config.php
+mau-4-developer-cms/config/config.php
+
+# File nén đóng gói
+*.zip
+*.tar.gz
+*.rar
+
+# Thư mục uploads (bỏ qua file tải lên, giữ cấu trúc và bảo mật)
+uploads/*
+!uploads/.htaccess
+!uploads/index.html
+mau-4-developer-cms/uploads/*
+!mau-4-developer-cms/uploads/.htaccess
+!mau-4-developer-cms/uploads/index.html
+
+# Môi trường và dependencies
+vendor/
+node_modules/
+.env
+.env.*
+
+# CodeIgniter writable directories
+writable/cache/*
+!writable/cache/index.html
+!writable/cache/.gitkeep
+writable/debugbar/*
+!writable/debugbar/index.html
+!writable/debugbar/.gitkeep
+writable/logs/*
+!writable/logs/index.html
+!writable/logs/.gitkeep
+writable/session/*
+!writable/session/index.html
+!writable/session/.gitkeep
+
+# File hệ thống OS
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+
