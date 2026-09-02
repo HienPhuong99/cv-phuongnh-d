@@ -77,8 +77,13 @@ Nếu bạn quên mật khẩu đăng nhập Admin, có thể thiết lập lạ
    ```
 
 ### Bước 3: Khởi chạy
-- Truy cập trang CV Public: `http://localhost/mau-4-developer-cms/`
-- Truy cập trang Quản trị: `http://localhost/mau-4-developer-cms/admin/`
+- Khởi chạy bằng PHP Built-in Server (khuyên dùng, trỏ document root vào thư mục `public`):
+  ```bash
+  php -S localhost:8081 -t public
+  ```
+- Hoặc nếu cấu hình VirtualHost Apache / Nginx, hãy trỏ DocumentRoot vào thư mục `public/`:
+  - Truy cập trang CV Public: `http://localhost:8081/` (hoặc `http://localhost/mau-4-developer-cms/public/`)
+  - Truy cập trang Quản trị: `http://localhost:8081/admin/login.php`
 
 ---
 
@@ -88,8 +93,8 @@ Nếu bạn quên mật khẩu đăng nhập Admin, có thể thiết lập lạ
 
 1. **Upload mã nguồn**:
    - Nén toàn bộ thư mục `mau-4-developer-cms` thành file `.zip`.
-   - Đăng nhập cPanel -> Mở **File Manager** -> Truy cập thư mục `public_html` (hoặc subdomain/subfolder).
-   - Tải file `.zip` lên và giải nén (Extract).
+   - Đăng nhập cPanel -> Mở **File Manager** -> Upload lên thư mục gốc hosting.
+   - Cấu hình DocumentRoot của domain/subdomain trỏ vào thư mục `public` (hoặc chuyển nội dung `public/` ra `public_html/` và đưa các thư mục `app/`, `config/`, `database/` ra ngoài thư mục webroot để bảo mật tối đa).
 2. **Tạo Database MySQL**:
    - Vào mục **MySQL Databases** trên cPanel -> Tạo Database mới (ví dụ: `u123_cv`).
    - Tạo MySQL User mới (ví dụ: `u123_cvuser`) và đặt mật khẩu an toàn.
@@ -100,7 +105,7 @@ Nếu bạn quên mật khẩu đăng nhập Admin, có thể thiết lập lạ
 4. **Cập nhật `config/config.php`**:
    - Chỉnh sửa các hằng số `DB_NAME`, `DB_USER`, `DB_PASS`, `APP_KEY` theo thông tin thực tế.
 5. **Cấp quyền ghi thư mục Uploads**:
-   - Đảm bảo thư mục `uploads/` có quyền ghi `0755` hoặc `0777` để có thể upload ảnh đại diện.
+   - Đảm bảo thư mục `public/uploads/` có quyền ghi `0755` hoặc `0775` để có thể upload ảnh đại diện.
 
 ---
 
@@ -110,11 +115,11 @@ Nếu bạn quên mật khẩu đăng nhập Admin, có thể thiết lập lạ
 ```bash
 sudo chown -R www-data:www-data /var/www/mau-4-developer-cms
 sudo chmod -R 755 /var/www/mau-4-developer-cms
-sudo chmod -R 775 /var/www/mau-4-developer-cms/uploads
+sudo chmod -R 775 /var/www/mau-4-developer-cms/public/uploads
 ```
 
 #### 2. Cấu hình Nginx Vhost Mẫu
-> ⚠️ **LƯU Ý QUAN TRỌNG:** File `.htaccess` **KHÔNG CÓ TÁC DỤNG** trên Nginx. Do đó bạn bắt buộc phải cấu hình block `location ^~ /uploads/` trực tiếp trong file cấu hình Nginx bên dưới.
+> ⚠️ **LƯU Ý QUAN TRỌNG:** Webroot phải trỏ vào `/var/www/mau-4-developer-cms/public`. File `.htaccess` **KHÔNG CÓ TÁC DỤNG** trên Nginx. Do đó bạn bắt buộc phải cấu hình block `location ^~ /uploads/` trực tiếp trong file cấu hình Nginx bên dưới.
 > Đồng thời, trong Apache/LiteSpeed, `php_flag engine off` chỉ hiệu lực với `mod_php` cũ và không có tác dụng trên PHP-FPM/LiteSpeed. Lớp chặn chính xác và an toàn nhất là `<FilesMatch>` chặn toàn bộ extension thực thi.
 
 Tạo file `/etc/nginx/sites-available/cv-developer.conf`:
@@ -122,7 +127,7 @@ Tạo file `/etc/nginx/sites-available/cv-developer.conf`:
 server {
     listen 80;
     server_name your-domain.com;
-    root /var/www/mau-4-developer-cms;
+    root /var/www/mau-4-developer-cms/public;
     index index.php index.html;
 
     charset utf-8;
@@ -159,16 +164,55 @@ sudo ln -s /etc/nginx/sites-available/cv-developer.conf /etc/nginx/sites-enabled
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
+---
+
+### 4.3. ✅ Kiểm tra BẮT BUỘC sau khi deploy (trước khi công khai website)
+
+> Các bước dưới đây chạy trên **domain thật**, không phải `php -S`. PHP built-in server có
+> cơ chế fallback: URL không khớp file nào trong document root sẽ được route về `index.php` —
+> nên trên `php -S` các URL nhạy cảm "trông có vẻ" trả trang chủ, KHÔNG chứng minh hosting an toàn.
+
+**1. Bốn URL sau phải trả `404` hoặc `403` (KHÔNG được trả nội dung file):**
+
+```
+https://your-domain.com/config/config.php
+https://your-domain.com/app/Auth.php
+https://your-domain.com/database/schema.sql
+https://your-domain.com/tests/
+```
+
+- Nếu `/database/schema.sql` **tải xuống được file `.sql`** → document root đang trỏ SAI
+  (trỏ vào thư mục gốc dự án thay vì `public/`). **Phải sửa ngay trước khi công khai website.**
+- Cách đúng: DocumentRoot / Nginx `root` phải trỏ vào `.../mau-4-developer-cms/public`,
+  còn `app/`, `config/`, `database/`, `tests/` nằm NGOÀI webroot.
+
+**2. Kiểm tra thư mục `uploads/` không thực thi được PHP:**
+
+```bash
+# Tạo file thử
+echo "<?php echo 'HACKED';" > public/uploads/test.php
+```
+Mở `https://your-domain.com/uploads/test.php` trên trình duyệt.
+→ **Phải KHÔNG thấy chữ `HACKED`** (phải thấy 403, hoặc tải file thô về, hoặc trang trắng).
+Nếu thấy `HACKED` → server đang thực thi PHP trong `uploads/`, lỗ hổng nghiêm trọng.
+**Xoá file `test.php` ngay sau khi kiểm tra xong.**
+
+**3. `.htaccess` KHÔNG có tác dụng trên Nginx.**
+File `public/uploads/.htaccess` chỉ hiệu lực với Apache / LiteSpeed. Trên Nginx bắt buộc phải
+dùng block `location ^~ /uploads/ { ... }` trong file cấu hình Vhost đã cho ở mục **4.2** ở trên.
+Tương tự, `php_flag engine off` chỉ chạy với `mod_php` cũ — lớp chặn chính là block
+`<FilesMatch "\.(php|phtml|phar|...)$">` (Apache) hoặc `location ~ \.php$ { deny all; }` bên trong
+`location ^~ /uploads/` (Nginx).
 
 ---
 
 ## 🎨 5. Hướng dẫn Biên dịch lại Tailwind CSS khi đổi Class
 
-Trang Public sử dụng file CSS tĩnh `assets/tailwind.min.css` (~22KB minified) thay vì nạp thư viện CDN runtime nhằm tăng tốc độ tải trang tối đa và bảo mật.
+Trang Public sử dụng file CSS tĩnh `public/assets/tailwind.min.css` (~24KB minified) thay vì nạp thư viện CDN runtime nhằm tăng tốc độ tải trang tối đa và bảo mật.
 
-Nếu sau này bạn tùy biến thêm class Tailwind trong `index.php`, hãy chạy lệnh sau để build lại file CSS:
+Nếu sau này bạn tùy biến thêm class Tailwind trong `public/index.php`, hãy chạy lệnh sau để build lại file CSS:
 ```bash
-npx -y tailwindcss@3.4.17 -i tailwind-input.css -o assets/tailwind.min.css --minify
+npx -y tailwindcss@3.4.17 -i tailwind-input.css -o public/assets/tailwind.min.css --minify
 ```
 
 ---
@@ -179,7 +223,7 @@ npx -y tailwindcss@3.4.17 -i tailwind-input.css -o assets/tailwind.min.css --min
 mau-4-developer-cms/
 ├── config/
 │   ├── config.example.php     # File cấu hình mẫu
-│   └── config.php             # Cấu hình DB, BASE_URL, APP_KEY, Session
+│   └── config.php             # Cấu hình DB, BASE_URL, APP_KEY, PUBLIC_PATH, Session
 ├── app/
 │   ├── Database.php           # PDO Singleton chuẩn UTF-8mb4, Prepared Statements
 │   ├── Auth.php               # Đăng nhập, rate-limit theo IP trong DB, dummy verify chống timing attack
@@ -187,37 +231,32 @@ mau-4-developer-cms/
 │   ├── Upload.php             # Xử lý upload finfo, resize GD max 1600px, dọn dẹp file cũ
 │   ├── Repository.php         # Model truy vấn CRUD dùng chung, checkContactThrottle
 │   └── helpers.php            # e() escape XSS, url(), asset(), upload_url(), flash(), old()
-├── admin/
-│   ├── login.php, logout.php  # Đăng nhập & Đăng xuất
-│   ├── index.php              # Dashboard tổng quan
-│   ├── profile.php            # Sửa thông tin cá nhân, Hero, Mục tiêu, Liên hệ, Avatar, PDF
-│   ├── sections.php           # Bật/tắt section, sửa tiêu đề, kéo thả thứ tự
-│   ├── stats.php              # Quản lý 4 chỉ số thống kê (Key Stats)
-│   ├── skills.php             # Quản lý kỹ năng cốt lõi & tags
-│   ├── strengths.php          # Quản lý điểm mạnh & phẩm chất
-│   ├── experience.php         # Quản lý các mốc kinh nghiệm timeline
-│   ├── education.php          # Quản lý học vấn & danh sách công cụ làm việc
-│   ├── settings.php           # Cấu hình SEO meta, monogram logo, footer
-│   ├── messages.php           # Quản lý tin nhắn liên hệ gửi về
-│   ├── account.php            # Đổi thông tin admin & mật khẩu
-│   ├── ajax/
-│   │   ├── reorder.php        # Nhận mảng ID SortableJS -> cập nhật Transaction PDO
-│   │   ├── toggle.php         # Bật/tắt nhanh trạng thái hiển thị qua AJAX
-│   │   └── upload.php         # Tải ảnh lên riêng lẻ
-│   └── partials/
-│       ├── header.php         # Bootstrap 5, Dark/Gold Admin CSS, Navbar
-│       ├── sidebar.php        # Menu điều hướng module
-│       └── footer.php         # Script SortableJS, SweetAlert2, AJAX helper
-├── assets/                    # File tĩnh gốc: style4.css, script4.js, tailwind.min.css, ảnh...
-├── uploads/                   # Thư mục chứa file tải lên (YYYY/MM/)
-│   ├── .htaccess              # Chặn thực thi PHP script
-│   └── index.html             # Chặn liệt kê danh mục thư mục (Directory Listing)
+├── public/                    # THƯ MỤC WEBROOT CÔNG KHAI (DocumentRoot)
+│   ├── index.php              # Trang CV Public (render động, stateless token, antispam form)
+│   ├── admin/                 # Khu vực quản trị CMS
+│   │   ├── login.php, logout.php # Đăng nhập & Đăng xuất
+│   │   ├── index.php          # Dashboard tổng quan
+│   │   ├── profile.php        # Sửa thông tin cá nhân, Hero, Mục tiêu, Liên hệ, Avatar, PDF
+│   │   ├── sections.php       # Bật/tắt section, sửa tiêu đề, kéo thả thứ tự
+│   │   ├── stats.php          # Quản lý 4 chỉ số thống kê (Key Stats)
+│   │   ├── skills.php         # Quản lý kỹ năng cốt lõi & tags
+│   │   ├── strengths.php      # Quản lý điểm mạnh & phẩm chất
+│   │   ├── experience.php     # Quản lý các mốc kinh nghiệm timeline
+│   │   ├── education.php      # Quản lý học vấn & danh sách công cụ làm việc
+│   │   ├── settings.php       # Cấu hình SEO meta, monogram logo, footer
+│   │   ├── messages.php       # Quản lý tin nhắn liên hệ gửi về
+│   │   ├── account.php        # Đổi thông tin admin & mật khẩu
+│   │   ├── ajax/              # Endpoints AJAX (reorder, toggle, upload)
+│   │   └── partials/          # Header, Footer, Sidebar admin
+│   ├── assets/                # File tĩnh: style4.css, script4.js, tailwind.min.css, vendor, fonts...
+│   └── uploads/               # Thư mục chứa file tải lên (YYYY/MM/)
+│       ├── .htaccess          # Chặn thực thi PHP script
+│       └── index.html         # Chặn liệt kê danh mục thư mục (Directory Listing)
 ├── database/
 │   ├── schema.sql             # Cấu trúc bảng MySQL chuẩn (13 bảng)
 │   └── seed.sql               # Dữ liệu khởi tạo chính xác từ template
-├── tailwind.config.js         # Cấu hình chủ đề Tailwind CSS
+├── tailwind.config.js         # Cấu hình chủ đề Tailwind CSS (quét ./public/index.php)
 ├── tailwind-input.css         # File đầu vào Tailwind CSS
-├── index.php                  # Trang CV Public (render động, stateless token, antispam form)
 └── README.md                  # Hướng dẫn sử dụng & triển khai
 ```
 
@@ -244,3 +283,46 @@ mau-4-developer-cms/
    - Tự động xóa file cũ khi thay đổi ảnh hoặc xóa bản ghi (bảo vệ chống Path Traversal).
 6. **Chống tấn công XSS**: Toàn bộ dữ liệu hiển thị ra ngoài HTML đều được lọc qua hàm `e()` (`htmlspecialchars`). Các đoạn văn bản cho phép định dạng được lọc qua whitelist tag thủ công.
 7. **Không rò rỉ thông tin lỗi Database**: Trên môi trường Production (`APP_ENV !== 'development'`), mọi ngoại lệ Database đều được ẩn thông tin nhạy cảm và ghi vào `error_log()`.
+
+---
+
+## 🧪 8. Lưu ý khi kiểm thử
+
+**Fatal error trong PHP vẫn trả HTTP `200` kèm nội dung một phần.** Khi PHP gặp lỗi chí mạng
+giữa lúc render, phần HTML sinh ra trước đó vẫn được gửi đi với mã `200`, chỉ dừng đột ngột ở
+điểm lỗi. Vì vậy khi test một trang:
+
+- **KHÔNG được coi HTTP `200` là bằng chứng trang chạy đúng.** `200` chỉ nói "file tồn tại".
+- Phải `grep` nội dung phản hồi để tìm các chuỗi lỗi:
+  `Fatal error`, `Parse error`, `Warning:`, `Notice:`, `Deprecated:`, `Uncaught`.
+- Kiểm tra cả log server (`error_log`, log của PHP-FPM / `php -S`).
+
+```bash
+# Ví dụ kiểm tra nhanh 1 URL
+curl -s https://your-domain.com/admin/profile.php \
+  | grep -E "Fatal error|Parse error|Warning:|Notice:|Deprecated:|Uncaught" \
+  && echo "!!! TRANG CÓ LỖI PHP" || echo "OK (không thấy chuỗi lỗi)"
+```
+
+> Lỗi `Call to undefined method Csrf::token()` trong `admin/profile.php` từng lọt qua nhiều vòng
+> kiểm thử đúng vì lý do này: trang vẫn trả `200`, chỉ là khối 5 (upload CV) không bao giờ hiện ra.
+
+---
+
+## 🔤 9. Ghi chú về font self-hosted (`public/assets/fonts/`)
+
+Trang public dùng 3 font local: **JetBrains Mono** (400/500/600), **Plus Jakarta Sans**
+(400/500/600/700), **Space Grotesk** (chỉ 700 — font này KHÔNG có weight 800).
+Mỗi weight có 2 subset: **Vietnamese** + **Latin**.
+
+- **Đã lược bỏ subset Latin-ext** (ā ē š ž ł ć ř ... dành cho Ba Lan / Séc / Thổ Nhĩ Kỳ).
+  Đã kiểm chứng toàn bộ text trang public + dữ liệu DB hiện tại không có ký tự nào chỉ thuộc
+  dải Latin mở rộng (`tests/font_latinext_audit.php`).
+- ⚠️ **Nếu sau này nội dung có ký tự Latin mở rộng** (tên công ty / thuật ngữ nước ngoài như
+  *Škoda*, *Nestlé* dùng é thì OK vì é ∈ Latin, nhưng *Łódź*, *Beyoncé*→ không, *Citroën* OK...),
+  cụ thể là các ký tự trong `U+0100–017F` (trừ ký tự tiếng Việt) hoặc `U+1E00–1E9F`, thì phải
+  **nạp lại subset Latin-ext**: tải 3 file `*-<hash latin-ext>.woff2` cho mỗi weight đang dùng và
+  thêm lại khối `@font-face` với `unicode-range` latin-ext vào `fonts.css`. Chạy lại
+  `tests/font_latinext_audit.php` để biết ký tự nào đang thiếu.
+- Nếu cần đổi/bổ sung weight: file tĩnh lấy từ https://fonts.google.com hoặc
+  `@fontsource/*`, đặt vào `public/assets/fonts/` và khai báo `@font-face` trong `fonts.css`.

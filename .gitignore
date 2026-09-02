@@ -11,9 +11,9 @@ mau-4-developer-cms/config/config.php
 uploads/*
 !uploads/.htaccess
 !uploads/index.html
-mau-4-developer-cms/uploads/*
-!mau-4-developer-cms/uploads/.htaccess
-!mau-4-developer-cms/uploads/index.html
+mau-4-developer-cms/public/uploads/*
+!mau-4-developer-cms/public/uploads/.htaccess
+!mau-4-developer-cms/public/uploads/index.html
 
 # Môi trường và dependencies
 vendor/
@@ -41,3 +41,10 @@ Thumbs.db
 desktop.ini
 *.log
 
+
+# Context dump / scratch
+_context-dump-*.md
+
+# Claude Code local
+.claude/
+mau-4-developer-cms/.claude/

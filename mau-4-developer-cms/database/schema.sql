@@ -46,6 +46,9 @@ CREATE TABLE IF NOT EXISTS `profile` (
   `contact_heading` VARCHAR(255) NULL,
   `contact_subtext` TEXT NULL,
   `cv_pdf_file` VARCHAR(255) NULL,
+  `cv_original_name` VARCHAR(255) NULL,
+  `cv_uploaded_at` DATETIME NULL,
+  `cv_size` INT NULL,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -102,6 +105,15 @@ CREATE TABLE IF NOT EXISTS `strengths` (
   `is_active` TINYINT(1) DEFAULT 1,
   `sort_order` INT DEFAULT 0,
   INDEX `idx_strengths_sort` (`sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 7b. Bảng Điểm cần cải thiện (Weaknesses) — mặc định section ẩn khỏi trang công khai
+CREATE TABLE IF NOT EXISTS `weaknesses` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `content` VARCHAR(255) NOT NULL,
+  `sort_order` INT NOT NULL DEFAULT 0,
+  `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+  INDEX `idx_weaknesses_sort` (`sort_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 8. Bảng Kinh nghiệm làm việc (Experiences)
@@ -175,6 +187,17 @@ CREATE TABLE IF NOT EXISTS `login_attempts` (
   `attempted_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `success` TINYINT(1) DEFAULT 0,
   INDEX `idx_login_ip_time` (`ip`, `attempted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 14. Bảng Thống kê Lượt tải CV PDF (chuẩn ẩn danh: không lưu IP/user-agent thô)
+CREATE TABLE IF NOT EXISTS `cv_downloads` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `visitor_hash` CHAR(64) NULL,
+  `device` ENUM('desktop','mobile','tablet') NULL,
+  `is_bot` TINYINT(1) NOT NULL DEFAULT 0,
+  `downloaded_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_cv_downloaded_at` (`downloaded_at`),
+  INDEX `idx_cv_visitor_hash` (`visitor_hash`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

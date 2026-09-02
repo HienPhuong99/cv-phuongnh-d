@@ -51,6 +51,21 @@ class Repository {
         return true;
     }
 
+    public static function updateCvPdf(string $path, string $originalName, int $size): bool {
+        Database::query(
+            "UPDATE `profile` SET `cv_pdf_file` = ?, `cv_original_name` = ?, `cv_uploaded_at` = NOW(), `cv_size` = ? WHERE `id` = 1",
+            [$path, $originalName, $size]
+        );
+        return true;
+    }
+
+    public static function removeCvPdf(): bool {
+        Database::query(
+            "UPDATE `profile` SET `cv_pdf_file` = NULL, `cv_original_name` = NULL, `cv_uploaded_at` = NULL, `cv_size` = NULL WHERE `id` = 1"
+        );
+        return true;
+    }
+
     // ==========================================
     // SECTIONS
     // ==========================================
@@ -213,6 +228,39 @@ class Repository {
 
     public static function deleteStrength(int $id): bool {
         return Database::delete('strengths', 'id = ?', [$id]) > 0;
+    }
+
+    // ==========================================
+    // WEAKNESSES (Điểm cần cải thiện — section mặc định ẩn)
+    // ==========================================
+    public static function getWeaknesses(bool $onlyActive = false): array {
+        $sql = "SELECT * FROM `weaknesses`";
+        if ($onlyActive) {
+            $sql .= " WHERE `is_active` = 1";
+        }
+        $sql .= " ORDER BY `sort_order` ASC, `id` ASC";
+        return Database::fetchAll($sql);
+    }
+
+    public static function getWeaknessById(int $id): ?array {
+        return Database::fetch("SELECT * FROM `weaknesses` WHERE `id` = ?", [$id]);
+    }
+
+    public static function saveWeakness(array $data, ?int $id = null): int {
+        if ($id) {
+            Database::update('weaknesses', $data, 'id = ?', [$id]);
+            return $id;
+        } else {
+            if (!isset($data['sort_order'])) {
+                $maxOrder = Database::fetch("SELECT MAX(sort_order) as m FROM weaknesses");
+                $data['sort_order'] = ($maxOrder['m'] ?? 0) + 1;
+            }
+            return Database::insert('weaknesses', $data);
+        }
+    }
+
+    public static function deleteWeakness(int $id): bool {
+        return Database::delete('weaknesses', 'id = ?', [$id]) > 0;
     }
 
     // ==========================================
@@ -417,7 +465,7 @@ class Repository {
     // GENERAL UTILS: REORDER & TOGGLE
     // ==========================================
     public static function reorder(string $table, array $orderedIds): bool {
-        $allowedTables = ['sections', 'key_stats', 'skills', 'strengths', 'experiences', 'educations', 'tools'];
+        $allowedTables = ['sections', 'key_stats', 'skills', 'strengths', 'weaknesses', 'experiences', 'educations', 'tools'];
         if (!in_array($table, $allowedTables, true)) {
             return false;
         }
@@ -426,8 +474,10 @@ class Repository {
         try {
             $pdo->beginTransaction();
             $stmt = $pdo->prepare("UPDATE `{$table}` SET `sort_order` = ? WHERE `id` = ?");
+            // Cách nhau 10 (10, 20, 30...) để giữ khoảng trống chèn mục mới mà không phải
+            // đánh số lại toàn bảng — đồng nhất với cách seed.sql đánh số sẵn.
             foreach ($orderedIds as $index => $id) {
-                $stmt->execute([(int)$index + 1, (int)$id]);
+                $stmt->execute([((int)$index + 1) * 10, (int)$id]);
             }
             $pdo->commit();
             return true;
@@ -440,7 +490,7 @@ class Repository {
     }
 
     public static function toggle(string $table, int $id, string $column = 'is_active'): ?int {
-        $allowedTables = ['sections', 'key_stats', 'skills', 'strengths', 'experiences', 'educations', 'tools'];
+        $allowedTables = ['sections', 'key_stats', 'skills', 'strengths', 'weaknesses', 'experiences', 'educations', 'tools'];
         $allowedColumns = ['is_active', 'is_visible', 'is_read'];
 
         if (!in_array($table, $allowedTables, true) || !in_array($column, $allowedColumns, true)) {

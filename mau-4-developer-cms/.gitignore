@@ -7,9 +7,9 @@ config/config.php
 *.rar
 
 # Thư mục uploads (bỏ qua file tải lên thực tế, giữ file bảo vệ)
-uploads/*
-!uploads/.htaccess
-!uploads/index.html
+public/uploads/*
+!public/uploads/.htaccess
+!public/uploads/index.html
 
 # Môi trường và dependencies
 node_modules/
@@ -20,3 +20,6 @@ node_modules/
 .DS_Store
 Thumbs.db
 *.log
+
+# Script kiểm thử thủ công (kết nối DB, không thuộc bản triển khai)
+tests/

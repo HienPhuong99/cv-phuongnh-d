@@ -48,13 +48,14 @@ INSERT INTO `profile` (
 
 -- 3. Cấu hình Section
 INSERT INTO `sections` (`id`, `key`, `badge_code`, `title`, `subtitle`, `is_visible`, `sort_order`) VALUES
-(1, 'hero', '', 'Đầu trang & Giới thiệu', '', 1, 0),
-(2, 'about', '01 // MỤC TIÊU NGHỀ NGHIỆP', 'Về tôi & Kế hoạch hành động', '', 1, 1),
-(3, 'skills', '02 // NĂNG LỰC CHUYÊN MÔN', 'Kỹ Năng Cốt Lõi', 'Bộ kỹ năng tư vấn, đàm phán và vận hành kinh doanh thực tế.', 1, 2),
-(4, 'strengths', '03 // PHẨM CHẤT NỔI BẬT', 'Điểm Mạnh & Kỷ Luật Công Việc', '', 1, 3),
-(5, 'experience', '04 // HÀNH TRÌNH THỰC CHIẾN', 'Kinh Nghiệm Làm Việc', '', 1, 4),
-(6, 'education', '05 // NỀN TẢNG & CÔNG CỤ', 'Học Vấn & Công Cụ Làm Việc', '', 1, 5),
-(7, 'contact', '06 // KẾT NỐI & HỢP TÁC', 'Liên Hệ Trực Tiếp', '', 1, 6)
+(1, 'hero', '', 'Đầu trang & Giới thiệu', '', 1, 10),
+(2, 'about', '01 // MỤC TIÊU NGHỀ NGHIỆP', 'Về tôi & Kế hoạch hành động', '', 1, 20),
+(3, 'skills', '02 // NĂNG LỰC CHUYÊN MÔN', 'Kỹ Năng Cốt Lõi', 'Bộ kỹ năng tư vấn, đàm phán và vận hành kinh doanh thực tế.', 1, 30),
+(4, 'strengths', '03 // PHẨM CHẤT NỔI BẬT', 'Điểm Mạnh & Kỷ Luật Công Việc', '', 1, 40),
+(8, 'weaknesses', '', 'Điểm cần cải thiện', '', 0, 50),
+(5, 'experience', '04 // HÀNH TRÌNH THỰC CHIẾN', 'Kinh Nghiệm Làm Việc', '', 1, 60),
+(6, 'education', '05 // NỀN TẢNG & CÔNG CỤ', 'Học Vấn & Công Cụ Làm Việc', '', 1, 70),
+(7, 'contact', '06 // KẾT NỐI & HỢP TÁC', 'Liên Hệ Trực Tiếp', '', 1, 80)
 ON DUPLICATE KEY UPDATE `title` = VALUES(`title`);
 
 -- 4. Cài đặt hệ thống (Settings)
@@ -66,7 +67,8 @@ INSERT INTO `settings` (`key`, `value`) VALUES
 ('monogram', 'HP'),
 ('footer_title', 'HIỀN PHƯƠNG — Nhân Viên Kinh Doanh'),
 ('footer_text', 'Thiết kế phong cách Modern Dark Gold Developer với HTML + Tailwind CSS. All rights reserved &copy; 2026.'),
-('google_analytics_id', '')
+('google_analytics_id', ''),
+('content_changed_at', '2026-09-02 14:00:00')
 ON DUPLICATE KEY UPDATE `value` = VALUES(`value`);
 
 -- 5. Chỉ số thống kê (Key Stats)

@@ -44,7 +44,11 @@ class Upload {
         finfo_close($finfo);
 
         if (!array_key_exists($mimeType, self::ALLOWED_MIMES)) {
-            return ['success' => false, 'message' => 'Định dạng file không được hỗ trợ (Chỉ chấp nhận JPG, PNG, WEBP, GIF).'];
+            return [
+                'success' => false,
+                'code'    => 'unsupported_type',
+                'message' => 'Định dạng file không được hỗ trợ (Chỉ chấp nhận JPG, PNG, WEBP, GIF).'
+            ];
         }
 
         $extension = self::ALLOWED_MIMES[$mimeType];
@@ -222,7 +226,8 @@ class Upload {
             return false;
         }
 
-        $fullPath = ROOT_PATH . '/' . ltrim($relativePath, '/\\');
+        $baseDir = defined('PUBLIC_PATH') ? PUBLIC_PATH : ROOT_PATH;
+        $fullPath = $baseDir . '/' . ltrim($relativePath, '/\\');
         $realUploadPath = realpath(UPLOAD_PATH);
         $realFilePath = realpath($fullPath);
 
