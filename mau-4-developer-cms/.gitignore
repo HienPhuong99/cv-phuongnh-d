@@ -6,10 +6,12 @@ config/config.php
 *.tar.gz
 *.rar
 
-# Thư mục uploads (bỏ qua file tải lên thực tế, giữ file bảo vệ)
+# Thư mục uploads (bỏ qua file tải lên thực tế, giữ file bảo vệ & cấu trúc thư mục)
 public/uploads/*
 !public/uploads/.htaccess
 !public/uploads/index.html
+!public/uploads/cv/
+!public/uploads/cv/.gitkeep
 
 # Môi trường và dependencies
 node_modules/

@@ -44,7 +44,89 @@ Nếu bạn quên mật khẩu đăng nhập Admin, có thể thiết lập lạ
 
 ---
 
-## 🚀 3. Hướng dẫn cài đặt nhanh trên Localhost (XAMPP / Laragon)
+## 💻 3. Cài đặt trên máy mới (Setup Local Environment)
+
+Khi clone dự án về máy mới, thực hiện lần lượt các bước sau:
+
+### Bước 1: Tạo Database và Import Dữ liệu mẫu (Schema & Seed)
+1. Tạo CSDL với bảng mã `utf8mb4`:
+   ```powershell
+   mysql -u root -p -e "DROP DATABASE IF EXISTS cv_mau4_developer; CREATE DATABASE cv_mau4_developer CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+   ```
+2. Import schema và seed dữ liệu:
+   ```powershell
+   mysql -u root -p --default-character-set=utf8mb4 cv_mau4_developer -e "source database/schema.sql"
+   mysql -u root -p --default-character-set=utf8mb4 cv_mau4_developer -e "source database/seed.sql"
+   ```
+
+> ⚠️ **LƯU Ý ĐẶC BIỆT QUAN TRỌNG TRÊN POWERSHELL:**  
+> Trên Windows PowerShell, **tuyệt đối KHÔNG** sử dụng pipe `|` hoặc toán tử chuyển hướng `<` (ví dụ `Get-Content ... | mysql` hoặc `mysql < database/seed.sql`). PowerShell sẽ tự động decode/encode qua console code page (UTF-16/OEM) khiến toàn bộ dấu tiếng Việt bị vỡ thành ký tự rác hoặc dấu `?`.  
+> **Bắt buộc** phải sử dụng lệnh nội tại của MySQL Client: `-e "source database/schema.sql"`.
+
+3. **Kiểm tra tính toàn vẹn UTF-8 bằng HEX:**
+   Chạy câu lệnh kiểm tra chuỗi họ tên tiếng Việt trong bảng `profile`:
+   ```powershell
+   mysql -u root -p cv_mau4_developer --default-character-set=utf8mb4 -e "SELECT CHAR_LENGTH(full_name) AS so_ky_tu, LENGTH(full_name) AS so_byte, HEX(LEFT(full_name,3)) AS hex_dau FROM profile;"
+   ```
+   Kết quả kỳ vọng:
+   ```text
+   +----------+---------+------------+
+   | so_ky_tu | so_byte | hex_dau    |
+   +----------+---------+------------+
+   |       11 |      15 | 4849E1BB80 |
+   +----------+---------+------------+
+   ```
+   - `48` = `H`
+   - `49` = `I`
+   - `E1BB80` = `Ề` (3 byte UTF-8 chuẩn của chữ `Ề`). Nếu hiển thị `3F` (dấu `?`) hoặc byte khác là import bị lỗi font.
+
+---
+
+### Bước 2: Cấu hình `config/config.php`
+1. Sao chép từ file mẫu:
+   ```powershell
+   cp config/config.example.php config/config.php
+   ```
+2. Sinh mã `APP_KEY` mới ngẫu nhiên (tối thiểu 32 ký tự):
+   ```powershell
+   php -r "echo bin2hex(random_bytes(32)) . PHP_EOL;"
+   ```
+3. Mở `config/config.php` và cập nhật:
+   - `DB_NAME`: `'cv_mau4_developer'`
+   - `DB_PASS`: Mật khẩu root MySQL của bạn
+   - `APP_KEY`: Chuỗi hex 64 ký tự vừa sinh ở trên
+
+---
+
+### Bước 3: Kiểm tra các Extension bắt buộc trong `php.ini`
+Kiểm tra file cấu hình PHP đang dùng bằng lệnh `php --ini` (ví dụ `C:\php\php.ini`).  
+Đảm bảo đã kích hoạt `extension_dir = "ext"` (hoặc đường dẫn tuyệt đối) và bật đủ 5 extension:
+```ini
+extension=pdo_mysql
+extension=fileinfo
+extension=curl
+extension=openssl
+extension=gd
+```
+Xác nhận lại qua Terminal:
+```powershell
+php -m
+```
+Đảm bảo danh sách hiển thị đủ các module: `pdo_mysql`, `fileinfo`, `curl`, `openssl`, `gd`.
+
+---
+
+### Bước 4: Khởi chạy Server và Truy cập
+Khởi chạy PHP Built-in Server trỏ webroot vào thư mục `public/`:
+```powershell
+php -S localhost:8081 -t public
+```
+- **Trang CV công khai**: `http://localhost:8081/`
+- **Trang Quản trị CMS**: `http://localhost:8081/admin/login.php` (Đăng nhập: `admin` / `Admin@123`)
+
+---
+
+## 🚀 4. Hướng dẫn cài đặt nhanh qua giao diện phpMyAdmin (XAMPP / Laragon)
 
 ### Bước 1: Tạo cơ sở dữ liệu
 1. Mở `phpMyAdmin` (ví dụ `http://localhost/phpmyadmin`).
@@ -74,8 +156,6 @@ Nếu bạn quên mật khẩu đăng nhập Admin, có thể thiết lập lạ
 > - Nếu bạn chạy web trực tiếp trên Apache/Nginx (không qua proxy trung gian): Giữ nguyên `TRUST_PROXY = false` để lấy IP chính xác từ `REMOTE_ADDR` chống giả mạo header.
 > - Nếu website chạy sau **Cloudflare CDN** hoặc **Reverse Proxy / Load Balancer**: Đổi `TRUST_PROXY = true` để hệ thống nhận diện đúng IP thật của người dùng qua `CF-Connecting-IP` và `X-Forwarded-For`.
 
-   ```
-
 ### Bước 3: Khởi chạy
 - Khởi chạy bằng PHP Built-in Server (khuyên dùng, trỏ document root vào thư mục `public`):
   ```bash
@@ -87,7 +167,7 @@ Nếu bạn quên mật khẩu đăng nhập Admin, có thể thiết lập lạ
 
 ---
 
-## 🌐 4. Hướng dẫn Triển khai (Deploy)
+## 🌐 5. Hướng dẫn Triển khai (Deploy)
 
 ### 4.1. Triển khai trên Shared Hosting cPanel
 
@@ -206,7 +286,7 @@ Tương tự, `php_flag engine off` chỉ chạy với `mod_php` cũ — lớp c
 
 ---
 
-## 🎨 5. Hướng dẫn Biên dịch lại Tailwind CSS khi đổi Class
+## 🎨 6. Hướng dẫn Biên dịch lại Tailwind CSS khi đổi Class
 
 Trang Public sử dụng file CSS tĩnh `public/assets/tailwind.min.css` (~24KB minified) thay vì nạp thư viện CDN runtime nhằm tăng tốc độ tải trang tối đa và bảo mật.
 
@@ -217,7 +297,7 @@ npx -y tailwindcss@3.4.17 -i tailwind-input.css -o public/assets/tailwind.min.cs
 
 ---
 
-## 📁 6. Cấu trúc thư mục dự án
+## 📁 7. Cấu trúc thư mục dự án
 
 ```
 mau-4-developer-cms/
@@ -251,7 +331,9 @@ mau-4-developer-cms/
 │   ├── assets/                # File tĩnh: style4.css, script4.js, tailwind.min.css, vendor, fonts...
 │   └── uploads/               # Thư mục chứa file tải lên (YYYY/MM/)
 │       ├── .htaccess          # Chặn thực thi PHP script
-│       └── index.html         # Chặn liệt kê danh mục thư mục (Directory Listing)
+│       ├── index.html         # Chặn liệt kê danh mục thư mục (Directory Listing)
+│       └── cv/                # Thư mục lưu trữ file CV PDF tải lên
+│           └── .gitkeep       # Giữ cấu trúc thư mục uploads/cv/ trên Git
 ├── database/
 │   ├── schema.sql             # Cấu trúc bảng MySQL chuẩn (13 bảng)
 │   └── seed.sql               # Dữ liệu khởi tạo chính xác từ template
@@ -262,7 +344,7 @@ mau-4-developer-cms/
 
 ---
 
-## 🛡️ 7. Tính năng bảo mật tích hợp
+## 🛡️ 8. Tính năng bảo mật tích hợp
 
 1. **Chống SQL Injection**: 100% các câu truy vấn sử dụng PDO Prepared Statements với tham số ràng buộc `?`.
 2. **Chống tấn công CSRF & Open Redirect**:
@@ -286,7 +368,7 @@ mau-4-developer-cms/
 
 ---
 
-## 🧪 8. Lưu ý khi kiểm thử
+## 🧪 9. Lưu ý khi kiểm thử
 
 **Fatal error trong PHP vẫn trả HTTP `200` kèm nội dung một phần.** Khi PHP gặp lỗi chí mạng
 giữa lúc render, phần HTML sinh ra trước đó vẫn được gửi đi với mã `200`, chỉ dừng đột ngột ở
@@ -309,7 +391,7 @@ curl -s https://your-domain.com/admin/profile.php \
 
 ---
 
-## 🔤 9. Ghi chú về font self-hosted (`public/assets/fonts/`)
+## 🔤 10. Ghi chú về font self-hosted (`public/assets/fonts/`)
 
 Trang public dùng 3 font local: **JetBrains Mono** (400/500/600), **Plus Jakarta Sans**
 (400/500/600/700), **Space Grotesk** (chỉ 700 — font này KHÔNG có weight 800).
