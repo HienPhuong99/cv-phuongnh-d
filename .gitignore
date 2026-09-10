@@ -48,3 +48,7 @@ _context-dump-*.md
 # Claude Code local
 .claude/
 mau-4-developer-cms/.claude/
+
+# Playwright
+playwright-report/
+test-results/
