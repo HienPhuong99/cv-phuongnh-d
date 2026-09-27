@@ -2,9 +2,6 @@
 
 Dự án chuyển đổi template CV cá nhân tĩnh **Mẫu 4 Developer (Dark Gold)** thành một ứng dụng Web PHP thuần kết hợp MySQL/MariaDB với đầy đủ trang quản trị CMS giúp bạn tự chỉnh sửa 100% nội dung một cách trực quan, nhanh chóng và bảo mật.
 
-> 🎨 **Giao diện trang công khai hiện dùng phong cách Mẫu 5 — Liquid Glass** (desktop OS: menu bar, cửa sổ kính kéo thả, dock, ngày/đêm, bảng màu Biển sương; trên điện thoại là màn hình ứng dụng + sheet vuốt đóng).
-> Chỉ thay lớp hiển thị (`public/index.php`, `public/assets/style5.css`, `public/assets/script5.js`) — **không đổi cấu trúc Database**, trang Admin và dữ liệu giữ nguyên.
-
 ---
 
 ## 📌 1. Yêu cầu môi trường
@@ -289,15 +286,11 @@ Tương tự, `php_flag engine off` chỉ chạy với `mod_php` cũ — lớp c
 
 ---
 
-## 🎨 6. Giao diện trang công khai (Mẫu 5 Liquid Glass)
+## 🎨 6. Hướng dẫn Biên dịch lại Tailwind CSS khi đổi Class
 
-- `public/assets/style5.css`: toàn bộ CSS của giao diện (CSS thuần, không cần build). Font tự host qua `@import url('fonts/fonts.css')`.
-- `public/assets/script5.js`: cửa sổ kéo thả / thu nhỏ / phóng to, dock, ngày/đêm, độ trong suốt, form liên hệ gửi AJAX (tự fallback submit thường nếu lỗi mạng).
-- Mỗi section trong **Admin → Sections** tương ứng một cửa sổ + một icon trên dock; bật/tắt và kéo thả thứ tự trong Admin sẽ đổi ẩn/hiện và thứ tự icon. `hero` + `about` gộp chung cửa sổ "Về tôi".
-- Tiêu đề trình duyệt và chữ chân trang lấy từ **Admin → Settings** (`site_title`, `footer_text`); dữ liệu mẫu còn chữ "Dark Gold", có thể sửa lại trong Admin.
-- Giao diện cũ (Mẫu 4 Dark Gold) vẫn giữ file `style4.css`, `script4.js`, `tailwind.min.css` để có thể khôi phục (lấy lại `public/index.php` bản cũ từ lịch sử git).
+Trang Public sử dụng file CSS tĩnh `public/assets/tailwind.min.css` (~24KB minified) thay vì nạp thư viện CDN runtime nhằm tăng tốc độ tải trang tối đa và bảo mật.
 
-Nếu khôi phục giao diện Mẫu 4 và tùy biến thêm class Tailwind trong `public/index.php`, hãy chạy lệnh sau để build lại file CSS:
+Nếu sau này bạn tùy biến thêm class Tailwind trong `public/index.php`, hãy chạy lệnh sau để build lại file CSS:
 ```bash
 npx -y tailwindcss@3.4.17 -i tailwind-input.css -o public/assets/tailwind.min.css --minify
 ```
@@ -319,7 +312,7 @@ mau-4-developer-cms/
 │   ├── Repository.php         # Model truy vấn CRUD dùng chung, checkContactThrottle
 │   └── helpers.php            # e() escape XSS, url(), asset(), upload_url(), flash(), old()
 ├── public/                    # THƯ MỤC WEBROOT CÔNG KHAI (DocumentRoot)
-│   ├── index.php              # Trang CV Public — giao diện Mẫu 5 Liquid Glass (render động, stateless token, antispam form)
+│   ├── index.php              # Trang CV Public (render động, stateless token, antispam form)
 │   ├── admin/                 # Khu vực quản trị CMS
 │   │   ├── login.php, logout.php # Đăng nhập & Đăng xuất
 │   │   ├── index.php          # Dashboard tổng quan
@@ -335,7 +328,7 @@ mau-4-developer-cms/
 │   │   ├── account.php        # Đổi thông tin admin & mật khẩu
 │   │   ├── ajax/              # Endpoints AJAX (reorder, toggle, upload)
 │   │   └── partials/          # Header, Footer, Sidebar admin
-│   ├── assets/                # File tĩnh: style5.css, script5.js (giao diện hiện tại), style4.css/script4.js/tailwind.min.css (Mẫu 4 cũ), fonts...
+│   ├── assets/                # File tĩnh: style4.css, script4.js, tailwind.min.css, vendor, fonts...
 │   └── uploads/               # Thư mục chứa file tải lên (YYYY/MM/)
 │       ├── .htaccess          # Chặn thực thi PHP script
 │       ├── index.html         # Chặn liệt kê danh mục thư mục (Directory Listing)

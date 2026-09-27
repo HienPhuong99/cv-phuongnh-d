@@ -1,8 +1,7 @@
 <?php
 /**
- * TRANG CHỦ CV (PUBLIC VIEW) — GIAO DIỆN MẪU 5 LIQUID GLASS
- * Render dữ liệu động từ Database MySQL (không đổi schema) theo phong cách desktop OS:
- * menu bar, cửa sổ kính kéo thả, dock, ngày/đêm, bảng màu Biển sương.
+ * TRANG CHỦ CV MẪU 4 DEVELOPER (PUBLIC VIEW)
+ * Render dữ liệu động từ Database MySQL nhưng giữ nguyên 100% HTML/CSS/JS gốc
  */
 
 // Không khởi chạy session cho khách truy cập public
@@ -117,487 +116,814 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 $renderTimestamp = time();
 $contactToken = Csrf::generatePublicToken($renderTimestamp);
 
-// ==========================================================================
-// CHUẨN BỊ DỮ LIỆU HIỂN THỊ CHO GIAO DIỆN LIQUID GLASS
-// ==========================================================================
-
-// Section hiển thị khi chưa cấu hình hoặc is_visible = 1
-function section_on(array $sections, string $key): bool {
-    return !isset($sections[$key]) || (int)$sections[$key]['is_visible'] === 1;
+// Helper xác định màu sắc hiển thị
+function get_color_class(string $colorName): array {
+    return match ($colorName) {
+        'terracotta' => [
+            'text'   => 'text-[#D2603A]',
+            'bg'     => 'text-[#D2603A]',
+            'border' => 'border-[#D2603A]',
+            'dot'    => 'border-[#D2603A] group-hover:bg-[#D2603A] group-hover:shadow-[0_0_12px_#D2603A]'
+        ],
+        'goldHover'  => [
+            'text'   => 'text-[#F0BB55]',
+            'bg'     => 'text-[#F0BB55]',
+            'border' => 'border-[#F0BB55]',
+            'dot'    => 'border-[#F0BB55] group-hover:bg-[#F0BB55] group-hover:shadow-[0_0_12px_#F0BB55]'
+        ],
+        'bronze'     => [
+            'text'   => 'text-[#A9762B]',
+            'bg'     => 'text-[#A9762B]',
+            'border' => 'border-[#A9762B]',
+            'dot'    => 'border-[#A9762B] group-hover:bg-[#A9762B] group-hover:shadow-[0_0_12px_#A9762B]'
+        ],
+        default      => [ // gold
+            'text'   => 'text-[#E3A93B]',
+            'bg'     => 'text-[#E3A93B]',
+            'border' => 'border-[#E3A93B]',
+            'dot'    => 'border-[#E3A93B] group-hover:bg-[#E3A93B] group-hover:shadow-[0_0_12px_#E3A93B]'
+        ]
+    };
 }
-
-// Icon SVG cho dock / màn hình chính (mobile)
-function glass_icon(string $name): string {
-    $paths = [
-        'user'      => '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>',
-        'star'      => '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>',
-        'briefcase' => '<rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>',
-        'shield'    => '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>',
-        'trending'  => '<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline>',
-        'book'      => '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>',
-        'phone'     => '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>',
-    ];
-    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . ($paths[$name] ?? '') . '</svg>';
-}
-
-// Thanh tiêu đề cửa sổ (3 nút đèn giao thông)
-function win_bar(string $title): string {
-    return '<div class="win-bar"><span class="lights">'
-        . '<button class="l-close" type="button" aria-label="Đóng" title="Đóng (Esc)"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 2.5l5 5M7.5 2.5l-5 5"/></svg></button>'
-        . '<button class="l-min" type="button" aria-label="Thu nhỏ xuống dock" title="Thu nhỏ (Ctrl/⌘ + M)"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 5h6"/></svg></button>'
-        . '<button class="l-max" type="button" aria-label="Phóng to / thu về" title="Phóng to (nhấp đúp thanh tiêu đề)"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2.2 6.3V2.2h4.1z M7.8 3.7v4.1H3.7z" class="fill"/></svg></button>'
-        . '</span><h2 class="win-title">' . e($title) . '</h2></div>';
-}
-
-// Dòng badge + phụ đề đầu mỗi cửa sổ (lấy từ bảng sections)
-function win_intro(?array $section): string {
-    $html = '';
-    if (!empty($section['badge_code'])) {
-        $html .= '<p class="eyebrow">' . e($section['badge_code']) . '</p>';
-    }
-    if (!empty($section['subtitle'])) {
-        $html .= '<p class="win-sub muted">' . e($section['subtitle']) . '</p>';
-    }
-    return $html === '' ? '' : '<div class="win-intro">' . $html . '</div>';
-}
-
-// Danh sách cửa sổ: key cửa sổ => section trong DB điều khiển ẩn/hiện & thứ tự
-$winDefs = [
-    'about'     => ['keys' => ['hero', 'about'], 'label' => 'Về tôi',             'icon' => 'user',      'ic' => 'ic1', 'title' => 'Về tôi'],
-    'skills'    => ['keys' => ['skills'],        'label' => 'Kỹ năng',            'icon' => 'star',      'ic' => 'ic3', 'title' => $sections['skills']['title'] ?? 'Kỹ năng cốt lõi'],
-    'strengths' => ['keys' => ['strengths'],     'label' => 'Điểm mạnh',          'icon' => 'shield',    'ic' => 'ic4', 'title' => $sections['strengths']['title'] ?? 'Điểm mạnh & Kỷ luật'],
-    'weak'      => ['keys' => ['weaknesses'],    'label' => 'Cải thiện',          'icon' => 'trending',  'ic' => 'ic7', 'title' => $sections['weaknesses']['title'] ?? 'Điểm cần cải thiện'],
-    'exp'       => ['keys' => ['experience'],    'label' => 'Kinh nghiệm',        'icon' => 'briefcase', 'ic' => 'ic2', 'title' => $sections['experience']['title'] ?? 'Kinh nghiệm làm việc'],
-    'edu'       => ['keys' => ['education'],     'label' => 'Học vấn & Công cụ',  'icon' => 'book',      'ic' => 'ic5', 'title' => $sections['education']['title'] ?? 'Học vấn & Công cụ'],
-    'contact'   => ['keys' => ['contact'],       'label' => 'Liên hệ',            'icon' => 'phone',     'ic' => 'ic6', 'title' => $sections['contact']['title'] ?? 'Liên hệ'],
-];
-
-$windows = [];
-$fallbackOrder = 0;
-foreach ($winDefs as $winKey => $def) {
-    $fallbackOrder += 10;
-    if ($winKey === 'weak') {
-        // Điểm cần cải thiện: chỉ hiện khi được bật tường minh (giữ nguyên hành vi cũ)
-        $visible = isset($sections['weaknesses']) && (int)$sections['weaknesses']['is_visible'] === 1 && !empty($weaknesses);
-    } else {
-        $visible = false;
-        foreach ($def['keys'] as $k) {
-            $visible = $visible || section_on($sections, $k);
-        }
-    }
-    if (!$visible) {
-        continue;
-    }
-    $order = null;
-    foreach ($def['keys'] as $k) {
-        if (isset($sections[$k])) {
-            $order = $order === null ? (int)$sections[$k]['sort_order'] : min($order, (int)$sections[$k]['sort_order']);
-        }
-    }
-    $def['order'] = $order ?? $fallbackOrder;
-    $windows[$winKey] = $def;
-}
-uasort($windows, fn($a, $b) => $a['order'] <=> $b['order']);
-
-$showHero  = section_on($sections, 'hero');
-$showAbout = section_on($sections, 'about');
-
-$phoneDisplay = $profile['phone_display'] ?: ($profile['phone'] ?? '');
-$statusText   = trim(explode('•', (string)($profile['status_badge'] ?? ''))[0]);
-if ($statusText !== '' && $statusText === mb_strtoupper($statusText, 'UTF-8')) {
-    // "SẴN SÀNG NHẬN VIỆC" -> "Sẵn sàng nhận việc" cho gọn trên menu bar
-    $statusText = mb_strtoupper(mb_substr($statusText, 0, 1, 'UTF-8'), 'UTF-8') . mb_strtolower(mb_substr($statusText, 1, null, 'UTF-8'), 'UTF-8');
-}
-$hasCvFile    = !empty($profile['cv_pdf_file']);
-
-// Ảnh đại diện (ưu tiên bản .webp nếu tồn tại)
-$avatarImgUrl   = upload_url($profile['avatar']);
-$avatarWebpPath = preg_replace('/\.(png|jpe?g)$/i', '.webp', $profile['avatar'] ?? '');
-$avatarWebpUrl  = preg_replace('/\.(png|jpe?g)$/i', '.webp', $avatarImgUrl);
-$hasWebp        = !empty($avatarWebpPath) && $avatarWebpPath !== ($profile['avatar'] ?? '') && file_exists(PUBLIC_PATH . '/' . ltrim($avatarWebpPath, '/\\'));
-$avatarAlt      = 'Chân dung ' . $profile['full_name'] . ' - ' . $profile['job_title'];
-
-function avatar_picture(string $class, bool $hasWebp, string $webpUrl, string $imgUrl, string $alt): string {
-    $html = '<picture>';
-    if ($hasWebp) {
-        $html .= '<source srcset="' . e($webpUrl) . '" type="image/webp">';
-    }
-    $html .= '<img class="' . e($class) . '" src="' . e($imgUrl) . '" alt="' . e($alt) . '" width="800" height="800" draggable="false" />';
-    return $html . '</picture>';
-}
-
-// Màu chấm timeline kinh nghiệm (xoay vòng theo bảng Biển sương)
-$jobDots = ['#2f7fb5', '#3aa7a0', '#7c6fd0', '#d98a4e', '#c0567a', '#4f9d5d'];
-
-// Mở sẵn cửa sổ Liên hệ sau khi gửi form (không dùng JS/AJAX)
-$initialWin = ($contactSuccess || !empty($contactError)) ? 'contact' : '';
 ?>
 <!DOCTYPE html>
-<html lang="vi" data-theme="light" data-palette="ocean">
+<html lang="vi" class="scroll-smooth">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title><?= e($settings['site_title'] ?? ($profile['full_name'] . ' — ' . $profile['job_title'])) ?></title>
   <meta name="description" content="<?= e($settings['meta_description'] ?? $profile['tagline']) ?>" />
   <meta name="author" content="<?= e($settings['author'] ?? $profile['full_name']) ?>" />
-  <meta name="theme-color" content="#eef2f5" />
-  <script>
-    (function () {
-      var t; try { t = localStorage.getItem('hp-glass-theme'); } catch (e) {}
-      if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      document.documentElement.setAttribute('data-theme', t);
-      var c; try { c = localStorage.getItem('hp-glass-clear'); } catch (e) {}
-      if (c !== null && !isNaN(+c)) document.documentElement.style.setProperty('--clear', (+c / 100).toFixed(2));
-    })();
-  </script>
-  <!-- Mẫu 5 Liquid Glass (font tự host: assets/fonts/fonts.css) -->
-  <link rel="stylesheet" href="<?= asset('style5.css') ?>" />
+  <meta name="theme-color" content="<?= e($settings['theme_color'] ?? '#0E0B08') ?>" />
+
+  <!-- Static Pre-compiled Tailwind CSS -->
+  <link rel="stylesheet" href="<?= asset('tailwind.min.css') ?>" />
+
+
+  <!-- Custom Stylesheet 4 -->
+  <link rel="stylesheet" href="<?= asset('style4.css') ?>" />
 </head>
-<body<?= $initialWin !== '' ? ' data-open-initial="' . e($initialWin) . '"' : '' ?>>
 
-  <div class="mesh" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i><i class="b4"></i></div>
+<body class="bg-[#0E0B08] text-[#F4ECDF] font-sans antialiased min-h-screen relative selection:bg-[#E3A93B]/30 selection:text-[#F4ECDF]">
 
-  <!-- Menu bar -->
-  <header class="menubar">
-    <div class="menubar-left">
-      <a class="brand" href="#" data-open="about" aria-label="Mở hồ sơ"><span class="brand-mark"><?= e($settings['monogram'] ?? 'HP') ?></span><?= e($profile['full_name']) ?></a>
-      <?php foreach ($windows as $winKey => $w): ?>
-        <a class="menu-link" href="#" data-open="<?= $winKey ?>"><?= e($w['label']) ?></a>
-      <?php endforeach; ?>
-    </div>
-    <div class="menubar-right">
-      <?php if ($statusText !== ''): ?>
-        <span class="status"><span class="status-dot"></span><?= e($statusText) ?></span>
-      <?php endif; ?>
-      <?php if ($hasCvFile): ?>
-        <a class="menu-btn" href="<?= url('cv-download.php') ?>" title="Tải CV dạng PDF">Tải CV</a>
-      <?php endif; ?>
-      <button class="menu-btn" id="btnPrintCV" type="button" title="In hoặc lưu hồ sơ dạng PDF">In / PDF</button>
-      <span class="clock" id="clock"></span>
-      <div class="clear-wrap">
-        <button class="clear-btn" id="clearBtn" type="button" aria-label="Điều chỉnh độ trong suốt" aria-expanded="false" aria-controls="clearPop" title="Độ trong suốt"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path class="fill" d="M12 3.5a8.5 8.5 0 0 1 0 17z"></path></svg></button>
-        <div class="clear-pop glass" id="clearPop" role="dialog" aria-label="Độ trong suốt">
-          <div class="cp-head"><span>Độ trong suốt</span><output id="clearVal" for="clearRange">45%</output></div>
-          <input class="cp-range" id="clearRange" type="range" min="0" max="100" step="1" value="45" aria-label="Độ trong suốt" />
-          <div class="cp-presets" role="group" aria-label="Mức có sẵn">
-            <button type="button" data-clear="12">Mờ đục</button>
-            <button type="button" data-clear="45">Cân bằng</button>
-            <button type="button" data-clear="85">Trong suốt</button>
-          </div>
-        </div>
+  <!-- Ambient Glow Backgrounds -->
+  <div class="ambient-gold-glow glow-top" aria-hidden="true"></div>
+  <div class="ambient-gold-glow glow-middle-right" aria-hidden="true"></div>
+  <div class="ambient-gold-glow glow-bottom-left" aria-hidden="true"></div>
+  <div class="bg-warm-grid" aria-hidden="true"></div>
+
+  <!-- ==========================================================================
+       1. STICKY NAVIGATION BAR
+       ========================================================================== -->
+  <header class="sticky top-0 z-50 transition-all duration-300 px-4 sm:px-6 lg:px-8 pt-4 pb-2" id="mainNav">
+    <div class="max-w-6xl mx-auto flex items-center justify-between bg-[#191309]/85 backdrop-blur-xl border border-[#33271A] rounded-full px-5 py-3 shadow-2xl transition-all duration-300">
+      
+      <!-- Brand Logo / Monogram -->
+      <a href="#hero" class="flex items-center gap-3 group cursor-pointer focus-visible:ring-2 focus-visible:ring-[#E3A93B] rounded-full" aria-label="Lên đầu trang">
+        <span class="w-8 h-8 rounded-full bg-gradient-to-br from-[#E3A93B] to-[#A9762B] text-[#0E0B08] font-heading font-bold text-sm flex items-center justify-center shadow-md group-hover:scale-105 transition-transform duration-200">
+          <?= e($settings['monogram'] ?? 'HP') ?>
+        </span>
+        <span class="font-heading font-bold text-base tracking-tight text-[#F4ECDF] group-hover:text-[#E3A93B] transition-colors duration-200">
+          <?= e($profile['full_name']) ?>
+        </span>
+      </a>
+
+      <!-- Desktop Nav Links -->
+      <nav class="hidden md:flex items-center gap-1" aria-label="Điều hướng chính">
+        <?php if (!isset($sections['about']) || $sections['about']['is_visible']): ?>
+          <a href="#about" class="nav-link-item px-3.5 py-1.5 rounded-full text-sm font-medium text-[#B3A488] hover:text-[#F4ECDF] hover:bg-[#241B0F] transition-all cursor-pointer">Về tôi</a>
+        <?php endif; ?>
+        <?php if (!isset($sections['skills']) || $sections['skills']['is_visible']): ?>
+          <a href="#skills" class="nav-link-item px-3.5 py-1.5 rounded-full text-sm font-medium text-[#B3A488] hover:text-[#F4ECDF] hover:bg-[#241B0F] transition-all cursor-pointer">Kỹ năng</a>
+        <?php endif; ?>
+        <?php if (!isset($sections['experience']) || $sections['experience']['is_visible']): ?>
+          <a href="#experience" class="nav-link-item px-3.5 py-1.5 rounded-full text-sm font-medium text-[#B3A488] hover:text-[#F4ECDF] hover:bg-[#241B0F] transition-all cursor-pointer">Kinh nghiệm</a>
+        <?php endif; ?>
+        <?php if (!isset($sections['strengths']) || $sections['strengths']['is_visible']): ?>
+          <a href="#strengths" class="nav-link-item px-3.5 py-1.5 rounded-full text-sm font-medium text-[#B3A488] hover:text-[#F4ECDF] hover:bg-[#241B0F] transition-all cursor-pointer">Điểm mạnh</a>
+        <?php endif; ?>
+        <?php if (isset($sections['weaknesses']) && (int)$sections['weaknesses']['is_visible'] === 1): ?>
+          <a href="#weaknesses" class="nav-link-item px-3.5 py-1.5 rounded-full text-sm font-medium text-[#B3A488] hover:text-[#F4ECDF] hover:bg-[#241B0F] transition-all cursor-pointer">Điểm cần cải thiện</a>
+        <?php endif; ?>
+        <?php if (!isset($sections['education']) || $sections['education']['is_visible']): ?>
+          <a href="#education" class="nav-link-item px-3.5 py-1.5 rounded-full text-sm font-medium text-[#B3A488] hover:text-[#F4ECDF] hover:bg-[#241B0F] transition-all cursor-pointer">Học vấn &amp; Công cụ</a>
+        <?php endif; ?>
+        <?php if (!isset($sections['contact']) || $sections['contact']['is_visible']): ?>
+          <a href="#contact" class="nav-link-item px-3.5 py-1.5 rounded-full text-sm font-medium text-[#B3A488] hover:text-[#F4ECDF] hover:bg-[#241B0F] transition-all cursor-pointer">Liên hệ</a>
+        <?php endif; ?>
+      </nav>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <?php if (!empty($profile['cv_pdf_file'])): ?>
+          <a href="<?= url('cv-download.php') ?>" class="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-[#B3A488] hover:text-[#F4ECDF] bg-[#241B0F] hover:bg-[#2E2214] border border-[#33271A] hover:border-[#E3A93B]/40 rounded-full transition-all cursor-pointer" title="Tải CV dạng PDF">
+            <svg class="w-3.5 h-3.5 text-[#E3A93B]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Tải CV (PDF)</span>
+          </a>
+        <?php endif; ?>
+
+        <?php if (!empty($profile['phone'])): ?>
+          <a href="tel:<?= e($profile['phone']) ?>" class="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs sm:text-sm font-bold text-[#0E0B08] bg-gradient-to-r from-[#E3A93B] to-[#F0BB55] hover:from-[#F0BB55] hover:to-[#FFF0D0] rounded-full shadow-lg shadow-[#E3A93B]/20 hover:shadow-[#E3A93B]/40 hover:-translate-y-0.5 transition-all cursor-pointer">
+            <span>Gọi ngay</span>
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+            </svg>
+          </a>
+        <?php endif; ?>
+
+        <!-- Mobile Menu Hamburger Button -->
+        <button type="button" id="mobileMenuBtn" class="md:hidden p-1.5 text-[#B3A488] hover:text-[#F4ECDF] rounded-full cursor-pointer focus-visible:ring-2 focus-visible:ring-[#E3A93B]" aria-expanded="false" aria-label="Mở menu điều hướng">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
       </div>
-      <button class="theme-toggle" id="themeToggle" type="button" aria-label="Chuyển giao diện ngày/đêm" aria-pressed="false"></button>
+    </div>
+
+    <!-- Mobile Dropdown Menu -->
+    <div id="mobileMenu" class="hidden md:hidden max-w-6xl mx-auto mt-2 p-4 bg-[#191309]/95 backdrop-blur-2xl border border-[#33271A] rounded-2xl shadow-2xl flex flex-col gap-2">
+      <?php if (!isset($sections['about']) || $sections['about']['is_visible']): ?>
+        <a href="#about" class="px-4 py-2 text-sm font-medium text-[#B3A488] hover:text-[#F4ECDF] hover:bg-[#241B0F] rounded-lg transition-colors cursor-pointer">Về tôi</a>
+      <?php endif; ?>
+      <?php if (!isset($sections['skills']) || $sections['skills']['is_visible']): ?>
+        <a href="#skills" class="px-4 py-2 text-sm font-medium text-[#B3A488] hover:text-[#F4ECDF] hover:bg-[#241B0F] rounded-lg transition-colors cursor-pointer">Kỹ năng</a>
+      <?php endif; ?>
+      <?php if (!isset($sections['experience']) || $sections['experience']['is_visible']): ?>
+        <a href="#experience" class="px-4 py-2 text-sm font-medium text-[#B3A488] hover:text-[#F4ECDF] hover:bg-[#241B0F] rounded-lg transition-colors cursor-pointer">Kinh nghiệm</a>
+      <?php endif; ?>
+      <?php if (!isset($sections['strengths']) || $sections['strengths']['is_visible']): ?>
+        <a href="#strengths" class="px-4 py-2 text-sm font-medium text-[#B3A488] hover:text-[#F4ECDF] hover:bg-[#241B0F] rounded-lg transition-colors cursor-pointer">Điểm mạnh</a>
+      <?php endif; ?>
+      <?php if (isset($sections['weaknesses']) && (int)$sections['weaknesses']['is_visible'] === 1): ?>
+        <a href="#weaknesses" class="px-4 py-2 text-sm font-medium text-[#B3A488] hover:text-[#F4ECDF] hover:bg-[#241B0F] rounded-lg transition-colors cursor-pointer">Điểm cần cải thiện</a>
+      <?php endif; ?>
+      <?php if (!isset($sections['education']) || $sections['education']['is_visible']): ?>
+        <a href="#education" class="px-4 py-2 text-sm font-medium text-[#B3A488] hover:text-[#F4ECDF] hover:bg-[#241B0F] rounded-lg transition-colors cursor-pointer">Học vấn &amp; Công cụ</a>
+      <?php endif; ?>
+      <?php if (!isset($sections['contact']) || $sections['contact']['is_visible']): ?>
+        <a href="#contact" class="px-4 py-2 text-sm font-medium text-[#B3A488] hover:text-[#F4ECDF] hover:bg-[#241B0F] rounded-lg transition-colors cursor-pointer">Liên hệ</a>
+      <?php endif; ?>
     </div>
   </header>
 
-  <main class="desk">
+  <!-- Main Content Container -->
+  <main class="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-24 sm:space-y-32">
 
-    <!-- Mobile home screen -->
-    <section class="home" aria-label="Màn hình chính">
-      <div class="home-card glass">
-        <?= avatar_picture('home-avatar', $hasWebp, $avatarWebpUrl, $avatarImgUrl, $avatarAlt) ?>
-        <div>
-          <p class="name"><?= e($profile['full_name']) ?></p>
-          <p class="role"><?= e($profile['job_title']) ?></p>
-          <?php if (!empty($profile['floating_badge_subtitle'])): ?>
-            <p class="mono muted home-meta"><?= e($profile['floating_badge_subtitle']) ?></p>
+    <!-- ==========================================================================
+         2. HERO SECTION
+         ========================================================================== -->
+    <?php if (!isset($sections['hero']) || $sections['hero']['is_visible']): ?>
+    <section id="hero" class="pt-6 sm:pt-12 pb-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-12 items-center">
+        
+        <!-- Left Column: Intro & Headline (7 cols) -->
+        <div class="lg:col-span-7 flex flex-col items-start gap-6">
+          
+          <!-- Status Pill -->
+          <?php if (!empty($profile['status_badge'])): ?>
+          <div class="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[#191309] border border-[#33271A] shadow-sm">
+            <span class="status-dot-gold"></span>
+            <span class="text-xs font-semibold tracking-wide text-[#B3A488] uppercase"><?= e($profile['status_badge']) ?></span>
+          </div>
           <?php endif; ?>
+
+          <!-- Hero Headline & Name -->
+          <div class="space-y-2">
+            <p class="font-mono text-sm sm:text-base font-medium text-[#E3A93B] tracking-wider uppercase">
+              <?= e($profile['pre_title'] ?? "Hello, I'm") ?>
+            </p>
+            <h1 class="font-heading text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-[#F4ECDF] leading-[1.08]">
+              <?= e($profile['full_name']) ?>
+            </h1>
+            <h2 class="font-heading text-2xl sm:text-4xl font-bold tracking-tight text-gold-gradient leading-[1.15]">
+              <?= e($profile['job_title']) ?>
+            </h2>
+          </div>
+
+          <!-- Short Intro Paragraph -->
+          <?php if (!empty($profile['tagline'])): ?>
+          <p class="text-base sm:text-lg text-[#B3A488] max-w-2xl leading-relaxed">
+            <?= nl2br(e($profile['tagline'])) ?>
+          </p>
+          <?php endif; ?>
+
+          <!-- CTA Buttons Row -->
+          <div class="flex flex-wrap items-center gap-4 pt-2">
+            <?php if (!isset($sections['experience']) || $sections['experience']['is_visible']): ?>
+            <a href="#experience" class="btn-gold cursor-pointer">
+              <span>Xem kinh nghiệm</span>
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <polyline points="19 12 12 19 5 12"></polyline>
+              </svg>
+            </a>
+            <?php endif; ?>
+
+            <?php if (!isset($sections['contact']) || $sections['contact']['is_visible']): ?>
+            <a href="#contact" class="btn-terracotta cursor-pointer">
+              <span>Liên hệ ngay</span>
+              <svg class="w-4 h-4 text-[#D2603A]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                <polyline points="22,6 12,13 2,6"></polyline>
+              </svg>
+            </a>
+            <?php endif; ?>
+
+            <?php if (!empty($profile['phone'])): ?>
+            <button type="button" data-copy="<?= e($profile['phone']) ?>" class="btn-ghost cursor-pointer" title="Sao chép số điện thoại">
+              <svg class="w-4 h-4 text-[#E3A93B]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+              </svg>
+              <span><?= e($profile['phone_display'] ?: $profile['phone']) ?></span>
+            </button>
+            <?php endif; ?>
+          </div>
+
+          <!-- Quick Contact Detail Links -->
+          <div class="flex flex-wrap items-center gap-4 sm:gap-6 pt-2 text-[#B3A488] text-xs font-mono">
+            <?php if (!empty($profile['email'])): ?>
+            <a href="mailto:<?= e($profile['email']) ?>" class="flex items-center gap-1.5 hover:text-[#E3A93B] transition-colors cursor-pointer">
+              <svg class="w-3.5 h-3.5 text-[#E3A93B]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                <polyline points="22,6 12,13 2,6"></polyline>
+              </svg>
+              <span><?= e($profile['email']) ?></span>
+            </a>
+            <?php endif; ?>
+
+            <?php if (!empty($profile['zalo_url'])): ?>
+            <a href="<?= e($profile['zalo_url']) ?>" target="_blank" rel="noopener noreferrer" class="flex items-center gap-1.5 hover:text-[#E3A93B] transition-colors cursor-pointer">
+              <svg class="w-3.5 h-3.5 text-[#E3A93B]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+              </svg>
+              <span>Zalo: <?= e($profile['phone_display'] ?: $profile['phone']) ?></span>
+            </a>
+            <?php endif; ?>
+          </div>
+
         </div>
+
+        <!-- Right Column: Avatar Frame with Warm Gold Glow (5 cols) -->
+        <div class="lg:col-span-5 flex justify-center lg:justify-end">
+          <div class="relative group">
+            
+            <!-- Warm Gold Ambient Ring -->
+            <div class="absolute -inset-1 rounded-2xl bg-gradient-to-tr from-[#E3A93B] via-[#D2603A] to-[#A9762B] opacity-75 blur-lg group-hover:opacity-100 transition duration-500"></div>
+            
+            <!-- Frame Container -->
+            <div class="relative w-64 sm:w-72 h-80 sm:h-96 rounded-2xl bg-[#191309] border-2 border-[#E3A93B]/70 overflow-hidden shadow-2xl p-2 flex flex-col justify-between">
+              
+              <!-- Avatar Photo -->
+              <div class="w-full h-full rounded-xl overflow-hidden bg-[#0E0B08]">
+                <?php
+                $avatarImgUrl = upload_url($profile['avatar']);
+                $avatarWebpPath = preg_replace('/\.(png|jpe?g)$/i', '.webp', $profile['avatar'] ?? '');
+                $avatarWebpUrl = preg_replace('/\.(png|jpe?g)$/i', '.webp', $avatarImgUrl);
+                $hasWebp = !empty($avatarWebpPath) && file_exists(PUBLIC_PATH . '/' . ltrim($avatarWebpPath, '/\\'));
+                ?>
+                <picture class="w-full h-full block">
+                  <?php if ($hasWebp): ?>
+                    <source srcset="<?= $avatarWebpUrl ?>" type="image/webp">
+                  <?php endif; ?>
+                  <img src="<?= $avatarImgUrl ?>" alt="Chân dung <?= e($profile['full_name']) ?> - <?= e($profile['job_title']) ?>" width="800" height="800" loading="eager" class="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500" />
+                </picture>
+              </div>
+
+              <!-- Floating Tag -->
+              <div class="absolute bottom-4 left-4 right-4 bg-[#0E0B08]/90 backdrop-blur-md border border-[#33271A] rounded-xl px-3 py-2 flex items-center justify-between shadow-lg">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-[#E3A93B] animate-pulse"></span>
+                  <span class="text-xs font-heading font-bold text-[#F4ECDF]"><?= e($profile['floating_badge_title'] ?: $profile['full_name']) ?></span>
+                </div>
+                <span class="text-[10px] font-mono text-[#E3A93B] uppercase tracking-wider"><?= e($profile['floating_badge_subtitle']) ?></span>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+
       </div>
-      <nav class="home-grid" aria-label="Mục hồ sơ">
-        <?php foreach ($windows as $winKey => $w): ?>
-          <button class="home-app" type="button" data-open="<?= $winKey ?>"><span class="app-icon <?= $w['ic'] ?>"><?= glass_icon($w['icon']) ?></span><?= e($w['label']) ?></button>
-        <?php endforeach; ?>
-      </nav>
     </section>
-
-    <?php if (isset($windows['about'])): ?>
-    <!-- Window: Về tôi (sections: hero + about) -->
-    <article class="win glass" id="win-about" aria-label="Về tôi">
-      <?= win_bar($windows['about']['title']) ?>
-      <div class="win-body">
-        <?php if ($showHero): ?>
-        <div class="profile">
-          <?= avatar_picture('avatar', $hasWebp, $avatarWebpUrl, $avatarImgUrl, $avatarAlt) ?>
-          <div>
-            <p class="eyebrow"><?= e($profile['pre_title'] ?? "Hello, I'm") ?></p>
-            <h1 class="name"><?= e($profile['full_name']) ?></h1>
-            <p class="role"><?= e($profile['job_title']) ?></p>
-          </div>
-        </div>
-        <?php if (!empty($profile['tagline'])): ?>
-          <p class="intro"><?= nl2br(e($profile['tagline'])) ?></p>
-        <?php endif; ?>
-        <?php endif; ?>
-
-        <?php if ($showAbout): ?>
-          <?php if (!empty($sections['about']['badge_code']) || !empty($sections['about']['title'])): ?>
-            <p class="eyebrow about-eyebrow"><?= e($sections['about']['badge_code'] ?: $sections['about']['title']) ?></p>
-          <?php endif; ?>
-          <?php if (!empty($profile['about_quote'])): ?>
-            <p class="intro intro-quote"><?= nl2br(e($profile['about_quote'])) ?></p>
-          <?php endif; ?>
-          <?php if (!empty($profile['about_subtext'])): ?>
-            <p class="intro"><?= nl2br(e($profile['about_subtext'])) ?></p>
-          <?php endif; ?>
-
-          <?php if (!empty($profile['commitment_1_title']) || !empty($profile['commitment_2_title'])): ?>
-          <div class="commit">
-            <?php foreach ([1, 2] as $n): if (empty($profile["commitment_{$n}_title"])) continue; ?>
-              <div class="commit-item"><b><?= e($profile["commitment_{$n}_title"]) ?></b><span><?= e($profile["commitment_{$n}_desc"]) ?></span></div>
-            <?php endforeach; ?>
-          </div>
-          <?php endif; ?>
-
-          <?php if (!empty($keyStats)): ?>
-          <div class="stats">
-            <?php foreach ($keyStats as $stat):
-              $countAttr = '';
-              if (preg_match('/^(\d{1,6})(\D{0,3})$/u', trim($stat['value']), $m)) {
-                  $countAttr = ' data-count="' . (int)$m[1] . '" data-suffix="' . e($m[2]) . '"';
-              }
-            ?>
-              <div class="stat<?= $countAttr === '' ? ' stat-text' : '' ?>"<?= !empty($stat['subtext']) ? ' title="' . e($stat['subtext']) . '"' : '' ?>><b<?= $countAttr ?>><?= e($stat['value']) ?></b><span><?= e($stat['label']) ?></span></div>
-            <?php endforeach; ?>
-          </div>
-          <?php endif; ?>
-        <?php endif; ?>
-
-        <div class="actions">
-          <?php if (!empty($profile['phone'])): ?>
-            <a class="btn btn-solid" href="tel:<?= e($profile['phone']) ?>">Gọi ngay</a>
-          <?php endif; ?>
-          <?php if (isset($windows['exp'])): ?>
-            <a class="btn btn-glass" href="#" data-open="exp">Xem kinh nghiệm</a>
-          <?php endif; ?>
-          <?php if (!empty($profile['phone'])): ?>
-            <button class="btn btn-glass" type="button" data-copy="<?= e($profile['phone']) ?>" data-copy-label="số điện thoại" title="Sao chép số điện thoại"><?= e($phoneDisplay) ?></button>
-          <?php endif; ?>
-        </div>
-        <?php if (!empty($profile['address'])): ?>
-          <p class="loc loc-about"><?= e($profile['address']) ?></p>
-        <?php endif; ?>
-      </div>
-    </article>
     <?php endif; ?>
 
-    <?php if (isset($windows['skills'])): ?>
-    <!-- Window: Kỹ năng -->
-    <article class="win glass" id="win-skills" data-w="lg" aria-label="<?= e($windows['skills']['title']) ?>">
-      <?= win_bar($windows['skills']['title']) ?>
-      <div class="win-body">
-        <?= win_intro($sections['skills'] ?? null) ?>
-        <div class="cards">
-          <?php foreach ($skills as $skill): ?>
-            <div class="card">
-              <h3><?= e($skill['title']) ?></h3>
-              <p><?= nl2br(e($skill['description'])) ?></p>
-              <?php if (!empty($skill['tag_array'])): ?>
-                <span class="tags"><?= e(implode(' · ', $skill['tag_array'])) ?></span>
+    <!-- ==========================================================================
+         3. ABOUT SECTION (MỤC TIÊU NGHỀ NGHIỆP)
+         ========================================================================== -->
+    <?php if (!isset($sections['about']) || $sections['about']['is_visible']): ?>
+    <section id="about" class="scroll-mt-24 space-y-10">
+      
+      <!-- Section Header -->
+      <div class="space-y-2">
+        <div class="inline-flex items-center gap-2 text-xs font-mono font-semibold tracking-widest text-[#E3A93B] uppercase">
+          <span><?= e($sections['about']['badge_code'] ?? '01 // MỤC TIÊU NGHỀ NGHIỆP') ?></span>
+        </div>
+        <h2 class="font-heading text-3xl sm:text-4xl font-bold text-[#F4ECDF]">
+          <?= e($sections['about']['title'] ?? 'Về tôi & Kế hoạch hành động') ?>
+        </h2>
+        <?php if (!empty($sections['about']['subtitle'])): ?>
+          <p class="text-base text-[#B3A488] max-w-xl"><?= e($sections['about']['subtitle']) ?></p>
+        <?php endif; ?>
+      </div>
+
+      <!-- Content Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        
+        <!-- Left: Narrative Objective (7 cols) -->
+        <div class="lg:col-span-7 space-y-5 text-[#B3A488] leading-relaxed text-base sm:text-lg">
+          <div class="p-6 sm:p-7 rounded-2xl bg-[#191309] border-l-4 border-l-[#E3A93B] border border-[#33271A] space-y-4">
+            <p class="text-[#F4ECDF] font-medium leading-relaxed">
+              <?= nl2br(e($profile['about_quote'])) ?>
+            </p>
+            <?php if (!empty($profile['about_subtext'])): ?>
+            <p class="text-sm text-[#B3A488]">
+              <?= nl2br(e($profile['about_subtext'])) ?>
+            </p>
+            <?php endif; ?>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+            <?php if (!empty($profile['commitment_1_title'])): ?>
+            <div class="flex items-start gap-3 p-3.5 rounded-xl bg-[#191309] border border-[#33271A]">
+              <div class="p-2 rounded-lg bg-[#241B0F] text-[#E3A93B] shrink-0">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+              </div>
+              <div class="text-xs space-y-0.5">
+                <strong class="text-[#F4ECDF] block"><?= e($profile['commitment_1_title']) ?></strong>
+                <span class="text-[#B3A488]"><?= e($profile['commitment_1_desc']) ?></span>
+              </div>
+            </div>
+            <?php endif; ?>
+
+            <?php if (!empty($profile['commitment_2_title'])): ?>
+            <div class="flex items-start gap-3 p-3.5 rounded-xl bg-[#191309] border border-[#33271A]">
+              <div class="p-2 rounded-lg bg-[#241B0F] text-[#D2603A] shrink-0">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 14 14"></polyline>
+                </svg>
+              </div>
+              <div class="text-xs space-y-0.5">
+                <strong class="text-[#F4ECDF] block"><?= e($profile['commitment_2_title']) ?></strong>
+                <span class="text-[#B3A488]"><?= e($profile['commitment_2_desc']) ?></span>
+              </div>
+            </div>
+            <?php endif; ?>
+          </div>
+        </div>
+
+        <!-- Right: Key Stats (5 cols) -->
+        <div class="lg:col-span-5 grid grid-cols-2 gap-4">
+          <?php foreach ($keyStats as $stat): 
+            $color = get_color_class($stat['accent_color'] ?? 'gold');
+          ?>
+            <div class="gold-card p-5 space-y-2">
+              <span class="font-heading text-3xl sm:text-4xl font-bold <?= $color['text'] ?>"><?= e($stat['value']) ?></span>
+              <p class="text-xs font-semibold uppercase tracking-wider text-[#B3A488]"><?= e($stat['label']) ?></p>
+              <?php if (!empty($stat['subtext'])): ?>
+                <p class="text-xs text-[#7D705C]"><?= e($stat['subtext']) ?></p>
               <?php endif; ?>
             </div>
           <?php endforeach; ?>
         </div>
+
       </div>
-    </article>
+    </section>
     <?php endif; ?>
 
-    <?php if (isset($windows['exp'])): ?>
-    <!-- Window: Kinh nghiệm -->
-    <article class="win glass" id="win-exp" aria-label="<?= e($windows['exp']['title']) ?>">
-      <?= win_bar($windows['exp']['title']) ?>
-      <div class="win-body">
-        <?= win_intro($sections['experience'] ?? null) ?>
-        <ol class="timeline">
-          <?php foreach (array_values($experiences) as $i => $exp): ?>
-            <li class="job"><span class="job-dot" style="background:<?= $jobDots[$i % count($jobDots)] ?>"></span><div>
-              <span class="job-time"><?= e($exp['period_text']) ?></span>
-              <h3><?= e($exp['position']) ?></h3><span class="job-co"><?= e($exp['company']) ?></span>
-              <?php if (!empty($exp['bullet_lines'])): ?>
-                <ul>
-                  <?php foreach ($exp['bullet_lines'] as $line): ?>
-                    <li><?= e(ltrim($line, "-•* \t")) ?></li>
-                  <?php endforeach; ?>
-                </ul>
-              <?php endif; ?>
-              <?php if (!empty($exp['tag_array'])): ?>
-                <span class="tags job-tags"><?= e(implode(' · ', $exp['tag_array'])) ?></span>
-              <?php endif; ?>
-            </div></li>
-          <?php endforeach; ?>
-        </ol>
-      </div>
-    </article>
-    <?php endif; ?>
-
-    <?php if (isset($windows['strengths'])): ?>
-    <!-- Window: Điểm mạnh -->
-    <article class="win glass" id="win-strengths" aria-label="<?= e($windows['strengths']['title']) ?>">
-      <?= win_bar($windows['strengths']['title']) ?>
-      <div class="win-body">
-        <?= win_intro($sections['strengths'] ?? null) ?>
-        <div class="cards one">
-          <?php foreach ($strengths as $strength): ?>
-            <div class="card"><h3><?= e($strength['title']) ?></h3><p><?= nl2br(e($strength['description'])) ?></p></div>
-          <?php endforeach; ?>
+    <!-- ==========================================================================
+         4. SKILLS SECTION (NĂNG LỰC CHUYÊN MÔN)
+         ========================================================================== -->
+    <?php if (!isset($sections['skills']) || $sections['skills']['is_visible']): ?>
+    <section id="skills" class="scroll-mt-24 space-y-10">
+      
+      <!-- Section Header -->
+      <div class="space-y-2">
+        <div class="inline-flex items-center gap-2 text-xs font-mono font-semibold tracking-widest text-[#E3A93B] uppercase">
+          <span><?= e($sections['skills']['badge_code'] ?? '02 // NĂNG LỰC CHUYÊN MÔN') ?></span>
         </div>
+        <h2 class="font-heading text-3xl sm:text-4xl font-bold text-[#F4ECDF]">
+          <?= e($sections['skills']['title'] ?? 'Kỹ Năng Cốt Lõi') ?>
+        </h2>
+        <?php if (!empty($sections['skills']['subtitle'])): ?>
+          <p class="text-base text-[#B3A488] max-w-xl">
+            <?= e($sections['skills']['subtitle']) ?>
+          </p>
+        <?php endif; ?>
       </div>
-    </article>
-    <?php endif; ?>
 
-    <?php if (isset($windows['weak'])): ?>
-    <!-- Window: Điểm cần cải thiện -->
-    <article class="win glass" id="win-weak" data-w="sm" aria-label="<?= e($windows['weak']['title']) ?>">
-      <?= win_bar($windows['weak']['title']) ?>
-      <div class="win-body">
-        <?= win_intro($sections['weaknesses'] ?? null) ?>
-        <ul class="weak-list">
-          <?php foreach ($weaknesses as $weakness): ?>
-            <li><?= nl2br(e($weakness['content'])) ?></li>
-          <?php endforeach; ?>
-        </ul>
-      </div>
-    </article>
-    <?php endif; ?>
-
-    <?php if (isset($windows['edu'])): ?>
-    <!-- Window: Học vấn & Công cụ -->
-    <article class="win glass" id="win-edu" data-w="lg" aria-label="<?= e($windows['edu']['title']) ?>">
-      <?= win_bar($windows['edu']['title']) ?>
-      <div class="win-body">
-        <?= win_intro($sections['education'] ?? null) ?>
-        <?php foreach ($educations as $edu): ?>
-          <div class="edu">
-            <span class="job-time"><?= e($edu['period_text']) ?></span>
-            <h3><?= e($edu['school']) ?></h3>
-            <?php $eduLine = implode(' • ', array_filter([$edu['degree'] ?? '', $edu['major'] ?? ''])); ?>
-            <?php if ($eduLine !== ''): ?>
-              <span class="job-co"><?= e($eduLine) ?></span>
-            <?php endif; ?>
-            <?php if (!empty($edu['description'])): ?>
-              <p class="muted edu-desc"><?= nl2br(e($edu['description'])) ?></p>
-            <?php endif; ?>
-            <?php if (!empty($edu['footer_text'])): ?>
-              <p class="edu-foot mono"><?= e($edu['footer_text']) ?></p>
+      <!-- Skills Cards Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <?php foreach ($skills as $skill): 
+          $color = get_color_class($skill['accent_color'] ?? 'gold');
+        ?>
+          <div class="gold-card p-6 flex flex-col justify-between space-y-4">
+            <div class="space-y-3">
+              <div class="w-10 h-10 rounded-xl bg-[#241B0F] border border-[#33271A] flex items-center justify-center <?= $color['text'] ?>">
+                <?= render_icon($skill['icon'] ?? 'message-square', 'w-5 h-5') ?>
+              </div>
+              <h3 class="font-heading text-lg font-bold text-[#F4ECDF]"><?= e($skill['title']) ?></h3>
+              <p class="text-xs text-[#B3A488] leading-relaxed">
+                <?= nl2br(e($skill['description'])) ?>
+              </p>
+            </div>
+            
+            <?php if (!empty($skill['tag_array'])): ?>
+            <div class="flex flex-wrap gap-1.5 pt-2 border-t border-[#33271A]">
+              <?php foreach ($skill['tag_array'] as $tag): ?>
+                <span class="px-2 py-1 bg-[#241B0F] text-[#F4ECDF] rounded text-xs font-mono"><?= e($tag) ?></span>
+              <?php endforeach; ?>
+            </div>
             <?php endif; ?>
           </div>
         <?php endforeach; ?>
-        <?php if (!empty($tools)): ?>
-        <div class="cards">
-          <?php foreach ($tools as $tool): ?>
-            <div class="card"><h3><?= e($tool['name']) ?></h3><p><?= nl2br(e($tool['description'])) ?></p></div>
+      </div>
+    </section>
+    <?php endif; ?>
+
+    <!-- ==========================================================================
+         5. STRENGTHS SECTION (ĐIỂM MẠNH & KỶ LUẬT)
+         ========================================================================== -->
+    <?php if (!isset($sections['strengths']) || $sections['strengths']['is_visible']): ?>
+    <section id="strengths" class="scroll-mt-24 space-y-10">
+      
+      <!-- Section Header -->
+      <div class="space-y-2">
+        <div class="inline-flex items-center gap-2 text-xs font-mono font-semibold tracking-widest text-[#E3A93B] uppercase">
+          <span><?= e($sections['strengths']['badge_code'] ?? '03 // PHẨM CHẤT NỔI BẬT') ?></span>
+        </div>
+        <h2 class="font-heading text-3xl sm:text-4xl font-bold text-[#F4ECDF]">
+          <?= e($sections['strengths']['title'] ?? 'Điểm Mạnh & Kỷ Luật Công Việc') ?>
+        </h2>
+        <?php if (!empty($sections['strengths']['subtitle'])): ?>
+          <p class="text-base text-[#B3A488] max-w-xl"><?= e($sections['strengths']['subtitle']) ?></p>
+        <?php endif; ?>
+      </div>
+
+      <!-- Strengths Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <?php foreach ($strengths as $strength): 
+          $color = get_color_class($strength['accent_color'] ?? 'gold');
+        ?>
+          <div class="gold-card p-6 space-y-3">
+            <div class="w-9 h-9 rounded-lg bg-[#241B0F] <?= $color['text'] ?> flex items-center justify-center">
+              <?= render_icon($strength['icon'] ?? 'shield', 'w-5 h-5') ?>
+            </div>
+            <h3 class="font-heading text-lg font-bold text-[#F4ECDF]"><?= e($strength['title']) ?></h3>
+            <p class="text-sm text-[#B3A488] leading-relaxed">
+              <?= nl2br(e($strength['description'])) ?>
+            </p>
+          </div>
+        <?php endforeach; ?>
+      </div>
+    </section>
+    <?php endif; ?>
+
+    <!-- ==========================================================================
+         5b. WEAKNESSES SECTION (ĐIỂM CẦN CẢI THIỆN) — chỉ render khi is_visible = 1
+         ========================================================================== -->
+    <?php if (isset($sections['weaknesses']) && (int)$sections['weaknesses']['is_visible'] === 1): ?>
+    <section id="weaknesses" class="scroll-mt-24 space-y-10">
+
+      <!-- Section Header -->
+      <div class="space-y-2">
+        <?php if (!empty($sections['weaknesses']['badge_code'])): ?>
+        <div class="inline-flex items-center gap-2 text-xs font-mono font-semibold tracking-widest text-[#E3A93B] uppercase">
+          <span><?= e($sections['weaknesses']['badge_code']) ?></span>
+        </div>
+        <?php endif; ?>
+        <h2 class="font-heading text-3xl sm:text-4xl font-bold text-[#F4ECDF]">
+          <?= e($sections['weaknesses']['title'] ?? 'Điểm cần cải thiện') ?>
+        </h2>
+        <?php if (!empty($sections['weaknesses']['subtitle'])): ?>
+          <p class="text-base text-[#B3A488] max-w-xl"><?= e($sections['weaknesses']['subtitle']) ?></p>
+        <?php endif; ?>
+      </div>
+
+      <!-- Weaknesses Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <?php foreach ($weaknesses as $weakness): ?>
+          <div class="gold-card p-5 flex items-start gap-3">
+            <span class="mt-1.5 w-2 h-2 rounded-full bg-[#D2603A] shrink-0"></span>
+            <p class="text-sm text-[#B3A488] leading-relaxed"><?= nl2br(e($weakness['content'])) ?></p>
+          </div>
+        <?php endforeach; ?>
+      </div>
+    </section>
+    <?php endif; ?>
+
+    <!-- ==========================================================================
+         6. EXPERIENCE TIMELINE SECTION (KINH NGHIỆM LÀM VIỆC)
+         ========================================================================== -->
+    <?php if (!isset($sections['experience']) || $sections['experience']['is_visible']): ?>
+    <section id="experience" class="scroll-mt-24 space-y-10">
+      
+      <!-- Section Header -->
+      <div class="space-y-2">
+        <div class="inline-flex items-center gap-2 text-xs font-mono font-semibold tracking-widest text-[#E3A93B] uppercase">
+          <span><?= e($sections['experience']['badge_code'] ?? '04 // HÀNH TRÌNH THỰC CHIẾN') ?></span>
+        </div>
+        <h2 class="font-heading text-3xl sm:text-4xl font-bold text-[#F4ECDF]">
+          <?= e($sections['experience']['title'] ?? 'Kinh Nghiệm Làm Việc') ?>
+        </h2>
+        <?php if (!empty($sections['experience']['subtitle'])): ?>
+          <p class="text-base text-[#B3A488] max-w-xl"><?= e($sections['experience']['subtitle']) ?></p>
+        <?php endif; ?>
+      </div>
+
+      <!-- Timeline Stack -->
+      <div class="relative border-l border-[#33271A] ml-3 sm:ml-4 pl-6 sm:pl-8 space-y-10">
+        <?php foreach ($experiences as $exp): 
+          $color = get_color_class($exp['accent_color'] ?? 'gold');
+        ?>
+          <div class="relative group">
+            <!-- Timeline Node Marker -->
+            <span class="absolute -left-[31px] sm:-left-[39px] top-1.5 w-3.5 h-3.5 rounded-full bg-[#191309] border-2 <?= $color['dot'] ?> transition-all"></span>
+
+            <div class="gold-card p-6 sm:p-7 space-y-4">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#33271A] pb-3">
+                <div>
+                  <h3 class="font-heading text-xl font-bold text-[#F4ECDF]"><?= e($exp['position']) ?></h3>
+                  <p class="text-sm font-medium <?= $color['text'] ?>"><?= e($exp['company']) ?></p>
+                </div>
+                <span class="text-xs font-mono text-[#B3A488] bg-[#241B0F] px-3 py-1 rounded-full border border-[#33271A] w-fit">
+                  <?= e($exp['period_text']) ?>
+                </span>
+              </div>
+
+              <?php if (!empty($exp['bullet_lines'])): ?>
+              <ul class="space-y-2 text-sm text-[#B3A488] leading-relaxed list-disc list-inside">
+                <?php foreach ($exp['bullet_lines'] as $line): ?>
+                  <li><?= e($line) ?></li>
+                <?php endforeach; ?>
+              </ul>
+              <?php else: ?>
+                <p class="text-sm text-[#B3A488] leading-relaxed"><?= nl2br(e($exp['description'])) ?></p>
+              <?php endif; ?>
+
+              <?php if (!empty($exp['tag_array'])): ?>
+              <div class="flex flex-wrap gap-2 pt-2">
+                <?php foreach ($exp['tag_array'] as $idx => $tag): ?>
+                  <?php if ($idx > 0): ?>
+                    <span class="text-xs font-mono text-[#7D705C]">•</span>
+                  <?php endif; ?>
+                  <span class="text-xs font-mono text-[#7D705C]"><?= e($tag) ?></span>
+                <?php endforeach; ?>
+              </div>
+              <?php endif; ?>
+            </div>
+          </div>
+        <?php endforeach; ?>
+      </div>
+    </section>
+    <?php endif; ?>
+
+    <!-- ==========================================================================
+         7. EDUCATION & TOOLS SECTION (HỌC VẤN & CÔNG CỤ SỐ)
+         ========================================================================== -->
+    <?php if (!isset($sections['education']) || $sections['education']['is_visible']): ?>
+    <section id="education" class="scroll-mt-24 space-y-10">
+      
+      <!-- Section Header -->
+      <div class="space-y-2">
+        <div class="inline-flex items-center gap-2 text-xs font-mono font-semibold tracking-widest text-[#E3A93B] uppercase">
+          <span><?= e($sections['education']['badge_code'] ?? '05 // NỀN TẢNG & CÔNG CỤ') ?></span>
+        </div>
+        <h2 class="font-heading text-3xl sm:text-4xl font-bold text-[#F4ECDF]">
+          <?= e($sections['education']['title'] ?? 'Học Vấn & Công Cụ Làm Việc') ?>
+        </h2>
+        <?php if (!empty($sections['education']['subtitle'])): ?>
+          <p class="text-base text-[#B3A488] max-w-xl"><?= e($sections['education']['subtitle']) ?></p>
+        <?php endif; ?>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+        
+        <!-- Education Card (5 cols) -->
+        <div class="lg:col-span-5 gold-card p-6 sm:p-7 flex flex-col justify-between space-y-4">
+          <?php if (!empty($educations)): 
+            $firstEdu = $educations[0];
+          ?>
+            <div class="space-y-3">
+              <div class="inline-flex items-center gap-2 text-xs font-mono text-[#E3A93B] bg-[#241B0F] px-2.5 py-1 rounded border border-[#33271A]">
+                <?= e($firstEdu['period_text']) ?>
+              </div>
+              <h3 class="font-heading text-2xl font-bold text-[#F4ECDF]"><?= e($firstEdu['school']) ?></h3>
+              <?php if (!empty($firstEdu['major'])): ?>
+                <p class="text-sm font-semibold text-[#E3A93B]"><?= e($firstEdu['major']) ?></p>
+              <?php endif; ?>
+              <?php if (!empty($firstEdu['description'])): ?>
+                <p class="text-sm text-[#B3A488] leading-relaxed">
+                  <?= nl2br(e($firstEdu['description'])) ?>
+                </p>
+              <?php endif; ?>
+            </div>
+
+            <?php if (!empty($firstEdu['footer_text'])): ?>
+            <div class="pt-4 border-t border-[#33271A] text-xs font-mono text-[#7D705C]">
+              <?= e($firstEdu['footer_text']) ?>
+            </div>
+            <?php endif; ?>
+          <?php else: ?>
+            <p class="text-[#B3A488]">Chưa có thông tin học vấn.</p>
+          <?php endif; ?>
+        </div>
+
+        <!-- Tools Grid (7 cols) -->
+        <div class="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <?php foreach ($tools as $tool): 
+            $color = get_color_class($tool['accent_color'] ?? 'gold');
+          ?>
+            <div class="gold-card p-5 space-y-2">
+              <div class="flex items-center gap-2 <?= $color['text'] ?>">
+                <?= render_icon($tool['icon'] ?? 'edit', 'w-5 h-5') ?>
+                <h4 class="font-heading font-bold text-base text-[#F4ECDF]"><?= e($tool['name']) ?></h4>
+              </div>
+              <p class="text-xs text-[#B3A488] leading-relaxed">
+                <?= nl2br(e($tool['description'])) ?>
+              </p>
+            </div>
           <?php endforeach; ?>
         </div>
-        <?php endif; ?>
+
       </div>
-    </article>
+    </section>
     <?php endif; ?>
 
-    <?php if (isset($windows['contact'])): ?>
-    <!-- Window: Liên hệ + form gửi lời nhắn (antispam giữ nguyên) -->
-    <article class="win glass" id="win-contact" aria-label="<?= e($windows['contact']['title']) ?>">
-      <?= win_bar($windows['contact']['title']) ?>
-      <div class="win-body">
-        <?php if (!empty($profile['contact_heading']) || !empty($profile['contact_subtext'])): ?>
-          <div class="win-intro">
-            <?php if (!empty($profile['contact_heading'])): ?>
-              <h3 class="contact-heading"><?= e($profile['contact_heading']) ?></h3>
+    <!-- ==========================================================================
+         8. CONTACT & COLLABORATION (LIÊN HỆ TRỰC TIẾP)
+         ========================================================================== -->
+    <?php if (!isset($sections['contact']) || $sections['contact']['is_visible']): ?>
+    <section id="contact" class="scroll-mt-24 space-y-10">
+      
+      <!-- Contact Bento Card -->
+      <div class="gold-card p-8 sm:p-12 text-center relative overflow-hidden bg-gradient-to-b from-[#191309] to-[#241B0F]">
+        
+        <div class="max-w-2xl mx-auto space-y-6">
+          <div class="inline-flex items-center gap-2 text-xs font-mono font-semibold tracking-widest text-[#E3A93B] uppercase">
+            <span><?= e($sections['contact']['badge_code'] ?? '06 // KẾT NỐI & HỢP TÁC') ?></span>
+          </div>
+
+          <h2 class="font-heading text-3xl sm:text-5xl font-bold text-[#F4ECDF] tracking-tight leading-tight">
+            <?= e($profile['contact_heading'] ?: 'Sẵn sàng đồng hành cùng doanh nghiệp đạt mục tiêu doanh số.') ?>
+          </h2>
+
+          <p class="text-base sm:text-lg text-[#B3A488] leading-relaxed">
+            <?= nl2br(e($profile['contact_subtext'] ?: 'Quý nhà tuyển dụng có thể liên hệ trực tiếp với tôi qua các kênh bên dưới để trao đổi chi tiết hơn về cơ hội hợp tác.')) ?>
+          </p>
+
+          <!-- Contact Action Buttons Grid -->
+          <div class="flex flex-wrap justify-center items-center gap-4 pt-4">
+            
+            <?php if (!empty($profile['phone'])): ?>
+            <a href="tel:<?= e($profile['phone']) ?>" class="btn-gold text-sm sm:text-base cursor-pointer">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+              </svg>
+              <span>Gọi điện: <?= e($profile['phone_display'] ?: $profile['phone']) ?></span>
+            </a>
             <?php endif; ?>
-            <?php if (!empty($profile['contact_subtext'])): ?>
-              <p class="win-sub muted"><?= nl2br(e($profile['contact_subtext'])) ?></p>
+
+            <?php if (!empty($profile['email'])): ?>
+            <a href="mailto:<?= e($profile['email']) ?>" class="btn-terracotta text-sm sm:text-base cursor-pointer">
+              <svg class="w-4 h-4 text-[#D2603A]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                <polyline points="22,6 12,13 2,6"></polyline>
+              </svg>
+              <span>Gửi Email</span>
+            </a>
+
+            <button type="button" data-copy="<?= e($profile['email']) ?>" class="btn-ghost text-sm sm:text-base cursor-pointer" title="Sao chép địa chỉ email">
+              <svg class="w-4 h-4 text-[#E3A93B]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              <span>Sao chép Email</span>
+            </button>
+            <?php endif; ?>
+
+          </div>
+
+          <!-- Social & Location Details Row -->
+          <div class="pt-8 border-t border-[#33271A] flex flex-wrap justify-center items-center gap-6 sm:gap-8 text-xs font-mono text-[#B3A488]">
+            <?php if (!empty($profile['zalo_url'])): ?>
+            <a href="<?= e($profile['zalo_url']) ?>" target="_blank" rel="noopener noreferrer" class="hover:text-[#E3A93B] transition-colors cursor-pointer">💬 Zalo <?= e($profile['full_name']) ?> ↗</a>
+            <?php endif; ?>
+
+            <?php if (!empty($profile['address'])): ?>
+            <div class="flex items-center gap-1.5 text-[#B3A488]">
+              <span>📍</span>
+              <span><?= e($profile['address']) ?></span>
+            </div>
+            <?php endif; ?>
+
+            <?php if (!empty($profile['phone'])): ?>
+            <a href="tel:<?= e($profile['phone']) ?>" class="hover:text-[#E3A93B] transition-colors cursor-pointer">📞 <?= e($profile['phone_display'] ?: $profile['phone']) ?> ↗</a>
             <?php endif; ?>
           </div>
-        <?php endif; ?>
 
-        <div class="contact-list">
-          <?php if (!empty($profile['phone'])): ?>
-            <a class="contact-row" href="tel:<?= e($profile['phone']) ?>"><span>ĐIỆN THOẠI</span><b><?= e($phoneDisplay) ?></b></a>
-          <?php endif; ?>
-          <?php if (!empty($profile['email'])): ?>
-            <a class="contact-row" href="mailto:<?= e($profile['email']) ?>"><span>EMAIL</span><b><?= e($profile['email']) ?></b></a>
-          <?php endif; ?>
-          <?php if (!empty($profile['zalo_url'])): ?>
-            <a class="contact-row" href="<?= e($profile['zalo_url']) ?>" target="_blank" rel="noopener noreferrer"><span>ZALO</span><b><?= e($phoneDisplay ?: 'Nhắn Zalo') ?></b></a>
-          <?php endif; ?>
-          <?php if (!empty($profile['address'])): ?>
-            <div class="contact-row"><span>ĐỊA CHỈ</span><b><?= e($profile['address']) ?></b></div>
-          <?php endif; ?>
-        </div>
+          <!-- Contact Message Form (Antispam & Protected) -->
+          <div class="pt-8 border-t border-[#33271A] text-left max-w-xl mx-auto">
+            <h3 class="font-heading text-lg font-bold text-[#F4ECDF] mb-1 text-center">Hoặc gửi tin nhắn nhanh</h3>
+            <p class="text-xs text-[#B3A488] mb-6 text-center">Tôi sẽ phản hồi qua email hoặc số điện thoại trong vòng 24 giờ.</p>
 
-        <div class="actions">
-          <?php if (!empty($profile['email'])): ?>
-            <button class="btn btn-glass" type="button" data-copy="<?= e($profile['email']) ?>" data-copy-label="email">Sao chép email</button>
-          <?php endif; ?>
-          <?php if ($hasCvFile): ?>
-            <a class="btn btn-solid" href="<?= url('cv-download.php') ?>">Tải CV (PDF)</a>
-          <?php endif; ?>
-        </div>
+            <?php if ($contactSuccess): ?>
+              <div class="p-4 rounded-xl bg-[#E3A93B]/10 border border-[#E3A93B]/30 text-[#E3A93B] text-sm text-center mb-6">
+                ✨ Cảm ơn bạn! Lời nhắn đã được gửi thành công. Tôi sẽ liên hệ lại với bạn sớm nhất.
+              </div>
+            <?php elseif (!empty($contactError)): ?>
+              <div class="p-4 rounded-xl bg-[#D2603A]/15 border border-[#D2603A]/30 text-[#D2603A] text-sm text-center mb-6">
+                ⚠️ <?= e($contactError) ?>
+              </div>
+            <?php endif; ?>
 
-        <div class="contact-form-wrap">
-          <h3 class="form-title">Gửi lời nhắn nhanh</h3>
-          <p class="win-sub muted">Tôi sẽ phản hồi qua email hoặc số điện thoại trong vòng 24 giờ.</p>
+            <form method="POST" action="index.php#contact" class="space-y-4">
+              <input type="hidden" name="action" value="send_message" />
+              <input type="hidden" name="_contact_token" value="<?= e($contactToken) ?>" />
+              <input type="hidden" name="_render_time" value="<?= $renderTimestamp ?>" />
 
-          <div class="notice<?= $contactSuccess ? ' ok' : (!empty($contactError) ? ' err' : '') ?>" id="contactNotice" role="status" aria-live="polite"<?= (!$contactSuccess && empty($contactError)) ? ' hidden' : '' ?>><?php
-            if ($contactSuccess) {
-                echo 'Cảm ơn bạn! Lời nhắn đã được gửi thành công. Tôi sẽ liên hệ lại với bạn sớm nhất.';
-            } elseif (!empty($contactError)) {
-                echo e($contactError);
-            }
-          ?></div>
+              <!-- Honeypot field (hidden offscreen for bot traps) -->
+              <div style="position:absolute;left:-9999px;" aria-hidden="true">
+                <input type="text" name="website" tabindex="-1" autocomplete="off" />
+              </div>
 
-          <form method="POST" action="index.php" class="contact-form" id="contactForm">
-            <input type="hidden" name="action" value="send_message" />
-            <input type="hidden" name="_contact_token" value="<?= e($contactToken) ?>" />
-            <input type="hidden" name="_render_time" value="<?= $renderTimestamp ?>" />
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label for="c_name" class="block text-xs font-mono text-[#B3A488] mb-1">Họ và tên <span class="text-[#D2603A]">*</span></label>
+                  <input type="text" id="c_name" name="name" required maxlength="100" placeholder="Nguyễn Văn A" class="w-full bg-[#120E08] border border-[#33271A] rounded-lg px-3.5 py-2.5 text-sm text-[#F4ECDF] placeholder-[#7D705C] focus:outline-none focus:border-[#E3A93B] transition-colors" />
+                </div>
+                <div>
+                  <label for="c_email" class="block text-xs font-mono text-[#B3A488] mb-1">Email liên hệ <span class="text-[#D2603A]">*</span></label>
+                  <input type="email" id="c_email" name="email" required maxlength="191" placeholder="email@congty.com" class="w-full bg-[#120E08] border border-[#33271A] rounded-lg px-3.5 py-2.5 text-sm text-[#F4ECDF] placeholder-[#7D705C] focus:outline-none focus:border-[#E3A93B] transition-colors" />
+                </div>
+              </div>
 
-            <!-- Honeypot field (hidden offscreen for bot traps) -->
-            <div style="position:absolute;left:-9999px;" aria-hidden="true">
-              <input type="text" name="website" tabindex="-1" autocomplete="off" />
-            </div>
+              <div>
+                <label for="c_phone" class="block text-xs font-mono text-[#B3A488] mb-1">Số điện thoại (Tùy chọn)</label>
+                <input type="tel" id="c_phone" name="phone" maxlength="50" placeholder="0901234567" class="w-full bg-[#120E08] border border-[#33271A] rounded-lg px-3.5 py-2.5 text-sm text-[#F4ECDF] placeholder-[#7D705C] focus:outline-none focus:border-[#E3A93B] transition-colors" />
+              </div>
 
-            <div class="field-row">
-              <label class="field"><span>Họ và tên <em>*</em></span><input type="text" name="name" required maxlength="100" placeholder="Nguyễn Văn A" autocomplete="name" /></label>
-              <label class="field"><span>Email <em>*</em></span><input type="email" name="email" required maxlength="191" placeholder="email@congty.com" autocomplete="email" /></label>
-            </div>
-            <label class="field"><span>Số điện thoại (tùy chọn)</span><input type="tel" name="phone" maxlength="50" placeholder="0901234567" autocomplete="tel" /></label>
-            <label class="field"><span>Lời nhắn <em>*</em></span><textarea name="message" required maxlength="5000" rows="3" placeholder="Chào bạn, mình muốn trao đổi về cơ hội hợp tác..."></textarea></label>
-            <button type="submit" class="btn btn-solid btn-block">Gửi lời nhắn</button>
-          </form>
-        </div>
+              <div>
+                <label for="c_message" class="block text-xs font-mono text-[#B3A488] mb-1">Nội dung trao đổi / Lời nhắn <span class="text-[#D2603A]">*</span></label>
+                <textarea id="c_message" name="message" required maxlength="5000" rows="3" placeholder="Chào bạn, mình muốn trao đổi về cơ hội hợp tác..." class="w-full bg-[#120E08] border border-[#33271A] rounded-lg px-3.5 py-2.5 text-sm text-[#F4ECDF] placeholder-[#7D705C] focus:outline-none focus:border-[#E3A93B] transition-colors"></textarea>
+              </div>
 
-        <?php if (!empty($settings['footer_title']) || !empty($settings['footer_text'])): ?>
-          <div class="win-foot">
-            <?php if (!empty($settings['footer_title'])): ?><p><b><?= e($settings['footer_title']) ?></b></p><?php endif; ?>
-            <?php if (!empty($settings['footer_text'])): ?><p><?= sanitize_html($settings['footer_text']) ?></p><?php endif; ?>
+              <button type="submit" class="w-full btn-gold justify-center py-3 text-sm font-bold cursor-pointer">
+                <span>Gửi lời nhắn ngay</span>
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+              </button>
+            </form>
           </div>
-        <?php endif; ?>
+
+
+        </div>
+
       </div>
-    </article>
+    </section>
     <?php endif; ?>
+
   </main>
 
-  <!-- Dock (desktop) -->
-  <nav class="dock glass" aria-label="Dock">
-    <?php foreach ($windows as $winKey => $w): ?>
-      <button class="dock-item" type="button" data-open="<?= $winKey ?>"><span class="dock-tip glass"><?= e($w['label']) ?></span><span class="app-icon <?= $w['ic'] ?>"><?= glass_icon($w['icon']) ?></span></button>
-    <?php endforeach; ?>
-  </nav>
+  <!-- ==========================================================================
+       9. SITE FOOTER
+       ========================================================================== -->
+  <footer class="relative z-10 border-t border-[#33271A] mt-24 py-10 px-4 sm:px-6 lg:px-8 bg-[#0E0B08]/90">
+    <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+      <div class="space-y-1">
+        <p class="font-heading font-bold text-sm text-[#F4ECDF]">
+          <?= e($settings['footer_title'] ?? ($profile['full_name'] . ' — ' . $profile['job_title'])) ?>
+        </p>
+        <p class="text-xs text-[#7D705C]">
+          <?= sanitize_html($settings['footer_text'] ?? 'Thiết kế phong cách Modern Dark Gold Developer với HTML + Tailwind CSS. All rights reserved &copy; 2026.') ?>
+        </p>
+      </div>
 
-  <!-- Call bar (mobile) -->
-  <?php if (!empty($profile['phone']) || !empty($profile['zalo_url'])): ?>
-  <div class="callbar glass">
-    <?php if (!empty($profile['phone'])): ?>
-      <a class="btn btn-solid" href="tel:<?= e($profile['phone']) ?>">Gọi ngay</a>
-    <?php endif; ?>
-    <?php if (!empty($profile['zalo_url'])): ?>
-      <a class="btn btn-glass" href="<?= e($profile['zalo_url']) ?>" target="_blank" rel="noopener noreferrer">Zalo</a>
-    <?php endif; ?>
+      <a href="#hero" class="inline-flex items-center gap-2 text-xs font-mono font-medium text-[#B3A488] hover:text-[#E3A93B] transition-colors cursor-pointer py-1 px-3 rounded-full bg-[#191309] border border-[#33271A]" title="Cuộn lên đầu trang">
+        <span>Lên đầu trang</span>
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="18 15 12 9 6 15"></polyline>
+        </svg>
+      </a>
+    </div>
+  </footer>
+
+  <!-- Toast Notification Container -->
+  <div id="toastNotify" class="toast-gold" role="status" aria-live="polite">
+    <svg class="w-4 h-4 text-[#E3A93B] shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+    </svg>
+    <span id="toastMsg">Đã sao chép vào bộ nhớ tạm!</span>
   </div>
-  <?php endif; ?>
 
-  <div class="scrim"></div>
-  <div class="toast glass" id="toast" role="status" aria-live="polite"></div>
-
-  <script src="<?= asset('script5.js') ?>"></script>
+  <!-- Custom JavaScript 4 -->
+  <script src="<?= asset('script4.js') ?>"></script>
 </body>
 </html>
